@@ -57,3 +57,19 @@ def db_session(test_engine):
     if transaction.is_active:
         transaction.rollback()
     connection.close()
+
+
+@pytest.fixture(scope="function")
+def client(db_session):
+    """FastAPI TestClient fixture with dependency override for the test database session."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.database import get_db
+
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
