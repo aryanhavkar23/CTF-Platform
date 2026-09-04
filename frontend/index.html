@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OWASP CTF Platform — Auth Verification Panel</title>
+  <title>OWASP CTF Platform — Verification & Management Panel</title>
   <style>
     :root {
       --bg-color: #0b0f19;
@@ -15,6 +15,7 @@
       --accent-cyan: #06b6d4;
       --accent-red: #ef4444;
       --accent-purple: #8b5cf6;
+      --accent-yellow: #f59e0b;
       --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
@@ -92,7 +93,7 @@
       margin-bottom: 6px;
       font-family: var(--font-mono);
     }
-    input {
+    input, select, textarea {
       width: 100%;
       background: #0d1322;
       border: 1px solid var(--border-color);
@@ -102,8 +103,9 @@
       font-size: 14px;
       outline: none;
       transition: border-color 0.2s;
+      font-family: inherit;
     }
-    input:focus { border-color: var(--accent-cyan); }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent-cyan); }
     button {
       background: var(--accent-cyan);
       color: #0b0f19;
@@ -113,7 +115,6 @@
       padding: 10px 16px;
       cursor: pointer;
       font-size: 13px;
-      width: 100%;
       font-family: var(--font-mono);
       transition: opacity 0.2s;
     }
@@ -141,6 +142,7 @@
       border-radius: 8px;
       padding: 16px;
       font-family: var(--font-mono);
+      margin-top: 24px;
     }
     .terminal-header {
       display: flex;
@@ -157,7 +159,7 @@
       overflow-x: auto;
       white-space: pre-wrap;
       word-break: break-all;
-      max-height: 280px;
+      max-height: 250px;
     }
     
     .user-pill {
@@ -180,17 +182,53 @@
     .role-student { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); border: 1px solid var(--accent-green); }
     .role-moderator { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
     .role-admin { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); border: 1px solid var(--accent-red); }
+
+    .diff-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .diff-easy { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+    .diff-medium { background: rgba(245, 158, 11, 0.2); color: var(--accent-yellow); }
+    .diff-hard { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+    .diff-insane { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+
+    .challenge-card {
+      background: #0d1322;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .challenge-card:hover { border-color: var(--accent-cyan); }
+    .challenge-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .challenge-title { font-size: 15px; font-weight: 600; color: #fff; }
+    .points-tag { font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); }
   </style>
 </head>
 <body>
   <header>
     <div class="brand">
       <div class="badge-logo">OWASP</div>
-      <h1>CTF Platform &mdash; Authentication &amp; RBAC Verification</h1>
+      <h1>CTF Platform &mdash; Auth &amp; Challenge Management</h1>
     </div>
     <div id="healthBadge" class="status-badge">Checking API...</div>
   </header>
 
+  <!-- Top Auth Row -->
   <div class="grid">
     <!-- Register Card -->
     <div class="card">
@@ -209,16 +247,16 @@
           <input type="password" id="regPassword" required minlength="8" placeholder="••••••••" />
         </div>
         <div class="form-group">
-          <label>COLLEGE (optional)</label>
+          <label>COLLEGE</label>
           <input type="text" id="regCollege" placeholder="OWASP University" />
         </div>
-        <button type="submit" class="btn-green">Register User</button>
+        <button type="submit" class="btn-green" style="width: 100%;">Register User</button>
       </form>
     </div>
 
     <!-- Login Card -->
     <div class="card">
-      <div class="card-title">2. Authenticate / Login</div>
+      <div class="card-title">2. Login / Session</div>
       <form id="loginForm">
         <div class="form-group">
           <label>EMAIL</label>
@@ -228,27 +266,107 @@
           <label>PASSWORD</label>
           <input type="password" id="loginPassword" required placeholder="••••••••" />
         </div>
-        <button type="submit">Login &amp; Store JWT</button>
+        <button type="submit" style="width: 100%;">Login &amp; Store JWT</button>
       </form>
-      <div style="margin-top: 16px;">
-        <button id="logoutBtn" class="btn-outline">Clear Stored Session (Logout)</button>
+      <div style="margin-top: 12px;">
+        <button id="logoutBtn" class="btn-outline" style="width: 100%;">Clear Stored Session (Logout)</button>
       </div>
     </div>
 
-    <!-- Auth State & RBAC Probes Card -->
+    <!-- Current User & Role Status -->
     <div class="card">
-      <div class="card-title">3. RBAC &amp; Session Probes</div>
+      <div class="card-title">3. Authenticated Identity</div>
       <div id="authState" class="user-pill">
-        No active session. Please log in or register.
+        <em>No active session. Please log in.</em>
       </div>
-
       <div class="actions-grid">
-        <button id="btnMe" class="btn-outline">GET /api/auth/me</button>
-        <button id="btnTestStudent" class="btn-outline">Probe Student</button>
-        <button id="btnTestMod" class="btn-purple">Probe Moderator</button>
-        <button id="btnTestAdmin" class="btn-red">Probe Admin</button>
+        <button id="btnMe" class="btn-outline">GET /me</button>
+        <button id="btnSeedCats" class="btn-purple">Seed Categories</button>
       </div>
     </div>
+  </div>
+
+  <!-- Phase 3: Challenge Arena & Management -->
+  <div style="margin-bottom: 24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <h2 style="font-size: 18px; color: var(--accent-cyan); font-family: var(--font-mono);">
+        4. CHALLENGE ARENA (BROWSE &amp; DETAIL)
+      </h2>
+      <div style="display: flex; gap: 10px;">
+        <select id="filterCategory" style="width: auto;">
+          <option value="">All Categories</option>
+        </select>
+        <select id="filterDifficulty" style="width: auto;">
+          <option value="">All Difficulties</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+          <option value="insane">Insane</option>
+        </select>
+        <button id="btnRefreshChallenges" class="btn-outline">Refresh Challenges</button>
+      </div>
+    </div>
+
+    <!-- Challenges Grid -->
+    <div id="challengesList" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+      <div style="color: var(--text-muted);">Loading challenges...</div>
+    </div>
+  </div>
+
+  <!-- Phase 3 Admin/Moderator Section -->
+  <div id="adminSection" class="card" style="margin-bottom: 24px;">
+    <div class="card-title">
+      <span>5. Admin / Moderator Challenge Authoring</span>
+      <span class="role-badge role-admin">RESTRICTED</span>
+    </div>
+
+    <form id="createChallengeForm">
+      <div class="grid" style="margin-bottom: 0;">
+        <div>
+          <div class="form-group">
+            <label>CHALLENGE TITLE</label>
+            <input type="text" id="challTitle" required placeholder="e.g. Web Injection 101" />
+          </div>
+          <div class="form-group">
+            <label>CATEGORY</label>
+            <select id="challCategory" required></select>
+          </div>
+          <div class="form-group">
+            <label>DIFFICULTY</label>
+            <select id="challDifficulty">
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="insane">Insane</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>POINTS</label>
+            <input type="number" id="challPoints" min="0" required value="100" />
+          </div>
+        </div>
+
+        <div>
+          <div class="form-group">
+            <label>DESCRIPTION (MARKDOWN/TEXT)</label>
+            <textarea id="challDesc" rows="3" required placeholder="Describe challenge objectives and clues..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>FLAG (Plaintext - Auto-Hashed Server-Side)</label>
+            <input type="text" id="challFlag" required placeholder="flag{sample_flag_value}" />
+          </div>
+          <div class="form-group" style="display: flex; gap: 16px; align-items: center; margin-top: 24px;">
+            <label style="margin: 0; display:flex; align-items:center; gap: 8px;">
+              <input type="checkbox" id="challActive" checked style="width: auto;" /> Active (Visible to students)
+            </label>
+            <label style="margin: 0; display:flex; align-items:center; gap: 8px;">
+              <input type="checkbox" id="challLive" style="width: auto;" /> Live Instance
+            </label>
+          </div>
+          <button type="submit" class="btn-green" style="margin-top: 14px;">Publish New Challenge</button>
+        </div>
+      </div>
+    </form>
   </div>
 
   <!-- Live Response Inspector -->
@@ -257,12 +375,14 @@
       <span id="responseStatus">LIVE API RESPONSE INSPECTOR</span>
       <span id="responseTimestamp">Ready</span>
     </div>
-    <pre id="responseLog">// Execute an operation above to inspect HTTP status, headers, and payload.</pre>
+    <pre id="responseLog">// Execute operations to inspect HTTP status, headers, and JSON responses.</pre>
   </div>
 
   <script>
     const API_BASE = window.location.origin;
     let currentToken = localStorage.getItem('owasp_jwt') || '';
+    let currentUser = null;
+    let categoriesCache = [];
 
     function logResponse(status, method, url, data) {
       document.getElementById('responseStatus').textContent = `${method} ${url} → HTTP ${status}`;
@@ -276,7 +396,7 @@
         const data = await res.json();
         const badge = document.getElementById('healthBadge');
         if (data.status === 'healthy') {
-          badge.textContent = 'API ONLINE (Postgres Ready)';
+          badge.textContent = 'API ONLINE (DB & Auth Active)';
           badge.classList.add('online');
         }
       } catch (e) {
@@ -285,6 +405,7 @@
     }
 
     function updateSessionUI(user) {
+      currentUser = user;
       const container = document.getElementById('authState');
       if (!user) {
         container.innerHTML = `<em>No active session. Please log in.</em>`;
@@ -320,6 +441,81 @@
         updateSessionUI(null);
       }
     }
+
+    async function loadCategories() {
+      try {
+        const res = await fetch(`${API_BASE}/api/categories`);
+        categoriesCache = await res.json();
+        const filterSelect = document.getElementById('filterCategory');
+        const createSelect = document.getElementById('challCategory');
+        
+        filterSelect.innerHTML = '<option value="">All Categories</option>';
+        createSelect.innerHTML = '';
+
+        categoriesCache.forEach(cat => {
+          const opt1 = document.createElement('option');
+          opt1.value = cat.id;
+          opt1.textContent = cat.name;
+          filterSelect.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = cat.id;
+          opt2.textContent = cat.name;
+          createSelect.appendChild(opt2);
+        });
+      } catch (e) {
+        console.error('Error loading categories:', e);
+      }
+    }
+
+    async function loadChallenges() {
+      const catId = document.getElementById('filterCategory').value;
+      const diff = document.getElementById('filterDifficulty').value;
+      let url = `${API_BASE}/api/challenges?`;
+      if (catId) url += `category_id=${catId}&`;
+      if (diff) url += `difficulty=${diff}&`;
+
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(url, { headers });
+        const challenges = await res.json();
+        logResponse(res.status, 'GET', '/api/challenges', challenges);
+
+        const container = document.getElementById('challengesList');
+        if (!challenges || challenges.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); padding:10px;">No challenges found matching filters.</div>';
+          return;
+        }
+
+        container.innerHTML = challenges.map(c => `
+          <div class="challenge-card">
+            <div>
+              <div class="challenge-meta">
+                <span>${c.category ? c.category.name : 'Category'}</span>
+                <span class="diff-badge diff-${c.difficulty}">${c.difficulty}</span>
+              </div>
+              <div class="challenge-title" style="margin-top:8px;">${c.title}</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                ${c.description.length > 80 ? c.description.slice(0, 80) + '...' : c.description}
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #1a2234; padding-top:10px;">
+              <span class="points-tag">${c.points} PTS</span>
+              <button class="btn-outline" style="padding:6px 12px;" onclick="viewChallengeDetails('${c.id}')">View Details</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    window.viewChallengeDetails = async function(id) {
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      const res = await fetch(`${API_BASE}/api/challenges/${id}`, { headers });
+      const data = await res.json();
+      logResponse(res.status, 'GET', `/api/challenges/${id}`, data);
+    };
 
     // Register Handler
     document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -360,6 +556,7 @@
         currentToken = data.access_token;
         localStorage.setItem('owasp_jwt', currentToken);
         updateSessionUI(data.user);
+        loadChallenges();
       }
     });
 
@@ -369,29 +566,65 @@
       localStorage.removeItem('owasp_jwt');
       updateSessionUI(null);
       logResponse(200, 'LOCAL', 'session/clear', { message: 'JWT cleared from client storage' });
+      loadChallenges();
     });
 
-    // Probe Buttons
     document.getElementById('btnMe').addEventListener('click', async () => {
       const result = await fetchMe();
       if (result) logResponse(result.res.status, 'GET', '/api/auth/me', result.data);
       else logResponse(401, 'GET', '/api/auth/me', { detail: 'Missing token in client storage' });
     });
 
-    async function probeRoute(endpoint) {
-      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
-      const res = await fetch(`${API_BASE}${endpoint}`, { headers });
+    document.getElementById('btnSeedCats').addEventListener('click', async () => {
+      const res = await fetch(`${API_BASE}/api/categories`);
       const data = await res.json();
-      logResponse(res.status, 'GET', endpoint, data);
-    }
+      logResponse(res.status, 'GET', '/api/categories', data);
+      loadCategories();
+    });
 
-    document.getElementById('btnTestStudent').addEventListener('click', () => probeRoute('/api/auth/test/student'));
-    document.getElementById('btnTestMod').addEventListener('click', () => probeRoute('/api/auth/test/moderator'));
-    document.getElementById('btnTestAdmin').addEventListener('click', () => probeRoute('/api/auth/test/admin'));
+    // Create Challenge
+    document.getElementById('createChallengeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) {
+        alert('Please login as moderator/admin to create challenges');
+        return;
+      }
+
+      const payload = {
+        title: document.getElementById('challTitle').value.trim(),
+        category_id: document.getElementById('challCategory').value,
+        difficulty: document.getElementById('challDifficulty').value,
+        points: parseInt(document.getElementById('challPoints').value, 10),
+        description: document.getElementById('challDesc').value.trim(),
+        flag: document.getElementById('challFlag').value.trim(),
+        is_active: document.getElementById('challActive').checked,
+        is_live_instance: document.getElementById('challLive').checked
+      };
+
+      const res = await fetch(`${API_BASE}/api/challenges`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      logResponse(res.status, 'POST', '/api/challenges', data);
+      if (res.ok) {
+        document.getElementById('createChallengeForm').reset();
+        loadChallenges();
+      }
+    });
+
+    document.getElementById('btnRefreshChallenges').addEventListener('click', loadChallenges);
+    document.getElementById('filterCategory').addEventListener('change', loadChallenges);
+    document.getElementById('filterDifficulty').addEventListener('change', loadChallenges);
 
     // Startup
     checkHealth();
     fetchMe();
+    loadCategories().then(loadChallenges);
   </script>
 </body>
 </html>

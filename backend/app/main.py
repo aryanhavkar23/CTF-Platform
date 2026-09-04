@@ -6,6 +6,8 @@ from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.api.auth import router as auth_router
+from app.api.categories import router as categories_router
+from app.api.challenges import router as challenges_router
 
 app = FastAPI(
     title="College OWASP CTF Platform API",
@@ -26,6 +28,8 @@ app.add_middleware(
 
 # Mount API routes
 app.include_router(auth_router)
+app.include_router(categories_router)
+app.include_router(challenges_router)
 
 
 @app.get("/api/health", tags=["Health"])
