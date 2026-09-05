@@ -71,7 +71,19 @@ class WriteupService:
             if user and ScoringService.has_solved(db, user.id, challenge_id):
                 return [writeup]
 
-        # In hidden or after_event, return empty list for public list query
+        if writeup.visibility == WriteupVisibility.AFTER_EVENT:
+            from app.models.event import Event, EventStatus, event_challenges
+            from app.services.event_service import EventService
+            linked_events = (
+                db.query(Event)
+                .join(event_challenges, Event.id == event_challenges.c.event_id)
+                .filter(event_challenges.c.challenge_id == challenge_id)
+                .all()
+            )
+            if linked_events and any(EventService.compute_status(e) == EventStatus.ENDED for e in linked_events):
+                return [writeup]
+
+        # Hidden or active after_event returns empty list
         return []
 
     @staticmethod
@@ -113,6 +125,26 @@ class WriteupService:
             return writeup
 
         if writeup.visibility == WriteupVisibility.AFTER_EVENT:
+            from app.models.event import Event, EventStatus, event_challenges
+            from app.services.event_service import EventService
+
+            linked_events = (
+                db.query(Event)
+                .join(event_challenges, Event.id == event_challenges.c.event_id)
+                .filter(event_challenges.c.challenge_id == challenge_id)
+                .all()
+            )
+            has_concluded_event = False
+            if linked_events:
+                for ev in linked_events:
+                    ev_status = EventService.compute_status(ev)
+                    if ev_status == EventStatus.ENDED:
+                        has_concluded_event = True
+                        break
+
+            if linked_events and has_concluded_event:
+                return writeup
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Writeup is locked: event has not concluded"

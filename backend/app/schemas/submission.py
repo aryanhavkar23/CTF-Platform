@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict
 class SubmissionCreate(BaseModel):
     challenge_id: UUID
     flag: str = Field(min_length=1, max_length=255, description="Submitted flag candidate")
+    event_id: Optional[UUID] = Field(None, description="Optional event context")
 
 
 class SubmissionResponse(BaseModel):

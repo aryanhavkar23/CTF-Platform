@@ -32,14 +32,17 @@ from app.schemas.leaderboard import (
     LeaderboardResponse,
     UserRankResponse,
 )
-from app.schemas.team import (
-    TeamCreate,
-    TeamUpdate,
-    AddTeamMemberRequest,
-    TransferOwnershipRequest,
-    TeamMemberResponse,
-    TeamResponse,
-    TeamDetailResponse,
+from app.schemas.event import (
+    EventCreate,
+    EventUpdate,
+    EventChallengeAdd,
+    EventChallengeResponse,
+    EventRegistrationRequest,
+    EventRegistrationResponse,
+    EventParticipantResponse,
+    EventResponse,
+    EventLeaderboardEntry,
+    EventLeaderboardResponse,
 )
 
 __all__ = [
@@ -75,6 +78,16 @@ __all__ = [
     "TeamMemberResponse",
     "TeamResponse",
     "TeamDetailResponse",
+    "EventCreate",
+    "EventUpdate",
+    "EventChallengeAdd",
+    "EventChallengeResponse",
+    "EventRegistrationRequest",
+    "EventRegistrationResponse",
+    "EventParticipantResponse",
+    "EventResponse",
+    "EventLeaderboardEntry",
+    "EventLeaderboardResponse",
 ]
 
 

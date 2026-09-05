@@ -692,6 +692,69 @@
     </div>
   </div>
 
+  <!-- Phase 8: CTF Events & Competitions Section -->
+  <div id="eventsSection" class="card" style="margin-bottom: 24px;">
+    <div class="card-title">
+      <span>9. CTF Events &amp; Competitions</span>
+      <button id="btnRefreshEvents" class="btn-outline" style="padding:4px 10px; font-size:11px;">Refresh Events</button>
+    </div>
+
+    <!-- Admin Event Authoring Panel -->
+    <div id="eventAdminCreateCard" style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px; margin-bottom:16px;">
+      <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:10px;">CREATE NEW CTF EVENT (ADMIN / MODERATOR)</h4>
+      <form id="createEventForm" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+        <div>
+          <label>EVENT NAME</label>
+          <input type="text" id="newEventName" required placeholder="e.g. Annual Spring CTF 2026" />
+        </div>
+        <div>
+          <label>SLUG (OPTIONAL)</label>
+          <input type="text" id="newEventSlug" placeholder="e.g. spring-ctf-2026" />
+        </div>
+        <div>
+          <label>START TIME (UTC ISO)</label>
+          <input type="datetime-local" id="newEventStart" required />
+        </div>
+        <div>
+          <label>END TIME (UTC ISO)</label>
+          <input type="datetime-local" id="newEventEnd" required />
+        </div>
+        <div>
+          <label>REGISTRATION OPENS (OPTIONAL)</label>
+          <input type="datetime-local" id="newEventRegStart" />
+        </div>
+        <div>
+          <label>REGISTRATION CLOSES (OPTIONAL)</label>
+          <input type="datetime-local" id="newEventRegEnd" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label>DESCRIPTION &amp; RULES</label>
+          <textarea id="newEventDesc" rows="2" placeholder="Event overview, team size constraints, and rules..."></textarea>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <button type="submit" class="btn-green" style="padding:6px 14px; font-size:12px;">Publish Event</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Events List & Event Hub -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+      <div>
+        <h4 style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); margin-bottom:8px;">AVAILABLE EVENTS</h4>
+        <div id="eventsList" style="display:flex; flex-direction:column; gap:8px; max-height:480px; overflow-y:auto;">
+          <div style="color:var(--text-muted); font-size:12px;">Loading events...</div>
+        </div>
+      </div>
+
+      <div id="eventHubPanel" style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <h4 style="font-size:12px; color:var(--accent-purple); font-family:var(--font-mono); margin-bottom:8px;">EVENT HUB &amp; PARTICIPATION</h4>
+        <div id="eventHubContent" style="color:var(--text-muted); font-size:12px;">
+          Select an event from the list to view status, register, access challenges, or inspect the isolated leaderboard.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Live Response Inspector -->
   <div class="terminal-card">
     <div class="terminal-header">
@@ -1674,6 +1737,337 @@
 
     document.getElementById('btnRefreshTeams')?.addEventListener('click', loadTeams);
 
+    // =========================================================================
+    // Phase 8: Events & Competitions Management Logic
+    // =========================================================================
+    let currentSelectedEventId = null;
+
+    async function loadEvents() {
+      const listEl = document.getElementById('eventsList');
+      if (!listEl) return;
+      listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Loading events...</div>';
+
+      try {
+        const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+        const res = await fetch(`${API_BASE}/api/events`, { headers });
+        const events = await res.json();
+
+        if (!Array.isArray(events) || events.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No active events found.</div>';
+          return;
+        }
+
+        listEl.innerHTML = events.map(ev => {
+          let statusBadgeClass = 'badge-upcoming';
+          let statusColor = 'var(--accent-cyan)';
+          if (ev.computed_status === 'live') {
+            statusBadgeClass = 'badge-live';
+            statusColor = 'var(--accent-green)';
+          } else if (ev.computed_status === 'ended') {
+            statusBadgeClass = 'badge-ended';
+            statusColor = 'var(--text-muted)';
+          }
+
+          const frozenBadge = ev.is_scoreboard_frozen ?
+            '<span style="background:rgba(245,158,11,0.15); color:var(--accent-yellow); border:1px solid var(--accent-yellow); padding:2px 6px; border-radius:4px; font-size:10px; margin-left:4px;">FROZEN</span>' : '';
+
+          return `
+            <div onclick="selectEvent('${ev.id}')" style="background:#111827; border:1px solid var(--border-color); border-radius:6px; padding:10px; cursor:pointer; transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent-cyan)'" onmouseout="this.style.borderColor='var(--border-color)'">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div style="font-weight:600; font-size:13px; color:#fff;">${ev.name}</div>
+                <div>
+                  <span style="border:1px solid ${statusColor}; color:${statusColor}; padding:2px 6px; border-radius:4px; font-size:10px; text-transform:uppercase;">${ev.computed_status}</span>
+                  ${frozenBadge}
+                </div>
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                Start: ${new Date(ev.start_at).toLocaleString()} | End: ${new Date(ev.end_at).toLocaleString()}
+              </div>
+              <div style="display:flex; gap:12px; margin-top:6px; font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">
+                <span>Challenges: ${ev.challenge_count}</span>
+                <span>Participants: ${ev.participant_count}</span>
+                <span>Reg: ${ev.is_registration_open ? 'OPEN' : 'CLOSED'}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        listEl.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">Error loading events: ${e.message}</div>`;
+      }
+    }
+
+    window.selectEvent = async function(eventId) {
+      currentSelectedEventId = eventId;
+      const hubEl = document.getElementById('eventHubContent');
+      if (!hubEl) return;
+      hubEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Loading event hub...</div>';
+
+      try {
+        const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+        const [evRes, regRes, challsRes, lbRes, partsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/events/${eventId}`, { headers }),
+          currentToken ? fetch(`${API_BASE}/api/events/${eventId}/registration`, { headers }) : Promise.resolve(null),
+          fetch(`${API_BASE}/api/events/${eventId}/challenges`, { headers }),
+          fetch(`${API_BASE}/api/events/${eventId}/leaderboard`, { headers }),
+          fetch(`${API_BASE}/api/events/${eventId}/participants`, { headers })
+        ]);
+
+        const ev = await evRes.json();
+        const regData = regRes && regRes.ok ? await regRes.json() : { is_registered: false };
+        const challs = challsRes.ok ? await challsRes.json() : [];
+        const lbData = lbRes.ok ? await lbRes.json() : { items: [], is_scoreboard_frozen: false };
+        const parts = partsRes.ok ? await partsRes.json() : [];
+
+        const isAdminOrMod = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator');
+
+        let registrationControls = '';
+        if (currentToken) {
+          if (regData.is_registered) {
+            registrationControls = `
+              <div style="background:rgba(16,185,129,0.1); border:1px solid var(--accent-green); border-radius:4px; padding:8px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="color:var(--accent-green); font-size:12px; font-weight:600;">✓ Registered (${regData.registration.registration_type})</span>
+                <button onclick="unregisterFromCurrentEvent('${ev.id}')" class="btn-outline" style="padding:2px 8px; font-size:11px; border-color:var(--accent-red); color:var(--accent-red);">Unregister</button>
+              </div>
+            `;
+          } else if (ev.is_registration_open) {
+            registrationControls = `
+              <div style="background:#111827; border:1px solid var(--border-color); border-radius:4px; padding:10px; margin-bottom:12px;">
+                <div style="font-size:11px; color:var(--accent-cyan); margin-bottom:6px; font-weight:600;">REGISTER FOR THIS EVENT</div>
+                <div style="display:flex; gap:8px;">
+                  <button onclick="registerForCurrentEvent('${ev.id}', 'individual')" class="btn-green" style="padding:4px 10px; font-size:11px;">Register as Individual</button>
+                  <button onclick="openTeamRegisterPrompt('${ev.id}')" class="btn-outline" style="padding:4px 10px; font-size:11px;">Register as Team</button>
+                </div>
+              </div>
+            `;
+          } else {
+            registrationControls = '<div style="color:var(--text-muted); font-size:11px; margin-bottom:12px;">Registration is currently closed for this event.</div>';
+          }
+        } else {
+          registrationControls = '<div style="color:var(--text-muted); font-size:11px; margin-bottom:12px;">Log in to register and participate.</div>';
+        }
+
+        let adminFreezeButtons = '';
+        if (isAdminOrMod) {
+          adminFreezeButtons = `
+            <div style="display:flex; gap:6px; margin-top:8px;">
+              ${ev.is_scoreboard_frozen ?
+                `<button onclick="unfreezeEventScoreboard('${ev.id}')" class="btn-outline" style="border-color:var(--accent-green); color:var(--accent-green); padding:3px 8px; font-size:11px;">Unfreeze Scoreboard</button>` :
+                `<button onclick="freezeEventScoreboard('${ev.id}')" class="btn-outline" style="border-color:var(--accent-yellow); color:var(--accent-yellow); padding:3px 8px; font-size:11px;">Freeze Scoreboard</button>`}
+            </div>
+          `;
+        }
+
+        hubEl.innerHTML = `
+          <div style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <h3 style="font-size:16px; color:#fff;">${ev.name}</h3>
+              <span style="font-size:11px; font-family:var(--font-mono); padding:2px 8px; border-radius:4px; border:1px solid var(--accent-cyan); color:var(--accent-cyan);">${ev.computed_status.toUpperCase()}</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">${ev.description || 'No description provided.'}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px; font-family:var(--font-mono);">
+              Window: ${new Date(ev.start_at).toLocaleString()} &rarr; ${new Date(ev.end_at).toLocaleString()}
+            </div>
+          </div>
+
+          ${registrationControls}
+
+          <!-- Challenges in this event -->
+          <div style="margin-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h5 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono);">EVENT CHALLENGES (${challs.length})</h5>
+              ${ev.computed_status !== 'live' && !isAdminOrMod ? '<span style="font-size:10px; color:var(--text-muted);">Unlocks when event is LIVE</span>' : ''}
+            </div>
+            ${challs.length === 0 ? '<div style="color:var(--text-muted); font-size:11px;">No challenges assigned or accessible yet.</div>' : `
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                ${challs.map(ch => `
+                  <div style="background:#111827; border:1px solid var(--border-color); border-radius:4px; padding:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                      <div style="font-weight:600; font-size:12px; color:#fff;">${ch.title} <span style="font-size:10px; color:var(--accent-green);">+${ch.points} PTS</span></div>
+                      <div style="font-size:10px; color:var(--text-muted);">${ch.category_name || ''} | ${ch.difficulty}</div>
+                    </div>
+                    ${currentToken && regData.is_registered && ev.computed_status === 'live' ? `
+                      <form onsubmit="submitEventFlagDirect(event, '${ev.id}', '${ch.id}')" style="display:flex; gap:4px;">
+                        <input type="text" id="evFlag-${ch.id}" placeholder="flag{...}" required style="padding:2px 6px; font-size:11px; width:130px;" />
+                        <button type="submit" class="btn-green" style="padding:2px 8px; font-size:11px;">Submit</button>
+                      </form>
+                    ` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            `}
+          </div>
+
+          <!-- Isolated Event Leaderboard -->
+          <div style="margin-top:20px; border-top:1px solid var(--border-color); padding-top:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <h5 style="font-size:12px; color:var(--accent-yellow); font-family:var(--font-mono);">
+                EVENT LEADERBOARD ${ev.is_scoreboard_frozen ? '<span style="color:var(--accent-yellow); font-size:10px;">(FROZEN)</span>' : ''}
+              </h5>
+              ${adminFreezeButtons}
+            </div>
+            ${(!lbData.items || lbData.items.length === 0) ? '<div style="color:var(--text-muted); font-size:11px;">No solves recorded yet.</div>' : `
+              <table style="width:100%; font-size:11px; text-align:left; border-collapse:collapse;">
+                <thead>
+                  <tr style="color:var(--text-muted); border-bottom:1px solid var(--border-color);">
+                    <th style="padding:4px;">#</th>
+                    <th style="padding:4px;">Participant</th>
+                    <th style="padding:4px;">Type</th>
+                    <th style="padding:4px;">Solves</th>
+                    <th style="padding:4px; text-align:right;">Points</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${lbData.items.map(item => `
+                    <tr style="border-bottom:1px solid #1a2234;">
+                      <td style="padding:4px; font-weight:700; color:var(--accent-cyan);">${item.rank}</td>
+                      <td style="padding:4px; color:#fff;">${item.participant_name}</td>
+                      <td style="padding:4px; color:var(--text-muted);">${item.participant_type}</td>
+                      <td style="padding:4px; color:var(--text-muted);">${item.solved_count}</td>
+                      <td style="padding:4px; text-align:right; font-weight:600; color:var(--accent-green);">${item.total_points}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            `}
+          </div>
+        `;
+      } catch (e) {
+        hubEl.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">Error loading event hub: ${e.message}</div>`;
+      }
+    };
+
+    window.registerForCurrentEvent = async function(eventId, regType, teamId = null) {
+      if (!currentToken) { alert('Please log in first.'); return; }
+      try {
+        const payload = { registration_type: regType };
+        if (teamId) payload.team_id = teamId;
+        const res = await fetch(`${API_BASE}/api/events/${eventId}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/events/${eventId}/register`, data);
+        if (res.ok) {
+          selectEvent(eventId);
+          loadEvents();
+        } else {
+          alert(data.detail || 'Could not register for event.');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    };
+
+    window.openTeamRegisterPrompt = function(eventId) {
+      const teamId = prompt('Enter your Team UUID to register this team:');
+      if (!teamId) return;
+      registerForCurrentEvent(eventId, 'team', teamId.trim());
+    };
+
+    window.unregisterFromCurrentEvent = async function(eventId) {
+      if (!currentToken) { alert('Please log in.'); return; }
+      if (!confirm('Are you sure you want to unregister from this event?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/events/${eventId}/unregister`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/events/${eventId}/unregister`, data);
+        if (res.ok) {
+          selectEvent(eventId);
+          loadEvents();
+        } else {
+          alert(data.detail || 'Could not unregister.');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    };
+
+    window.freezeEventScoreboard = async function(eventId) {
+      if (!confirm('Freeze public scoreboard for this event? Submissions will continue but leaderboard will lock at current timestamp.')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/events/${eventId}/freeze-scoreboard`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/events/${eventId}/freeze-scoreboard`, data);
+        if (res.ok) { selectEvent(eventId); loadEvents(); }
+      } catch (e) { alert('Error: ' + e.message); }
+    };
+
+    window.unfreezeEventScoreboard = async function(eventId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/events/${eventId}/unfreeze-scoreboard`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/events/${eventId}/unfreeze-scoreboard`, data);
+        if (res.ok) { selectEvent(eventId); loadEvents(); }
+      } catch (e) { alert('Error: ' + e.message); }
+    };
+
+    window.submitEventFlagDirect = async function(e, eventId, challengeId) {
+      e.preventDefault();
+      const input = document.getElementById(`evFlag-${challengeId}`);
+      if (!input || !input.value.trim()) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/events/${eventId}/submissions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+          body: JSON.stringify({ challenge_id: challengeId, flag: input.value.trim() })
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/events/${eventId}/submissions`, data);
+        if (res.ok) {
+          alert(data.message || (data.is_correct ? 'Correct flag!' : 'Incorrect flag.'));
+          selectEvent(eventId);
+        } else {
+          alert(data.detail || 'Submission failed.');
+        }
+      } catch (err) { alert('Error: ' + err.message); }
+    };
+
+    // Create Event Form Handler
+    document.getElementById('createEventForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) { alert('Please log in as admin/moderator.'); return; }
+      const toIso = (id) => {
+        const val = document.getElementById(id).value;
+        return val ? new Date(val).toISOString() : null;
+      };
+      const payload = {
+        name: document.getElementById('newEventName').value.trim(),
+        slug: document.getElementById('newEventSlug').value.trim() || null,
+        start_at: toIso('newEventStart'),
+        end_at: toIso('newEventEnd'),
+        registration_start_at: toIso('newEventRegStart'),
+        registration_end_at: toIso('newEventRegEnd'),
+        description: document.getElementById('newEventDesc').value.trim() || null,
+      };
+
+      const res = await fetch(`${API_BASE}/api/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      logResponse(res.status, 'POST', '/api/events', data);
+      if (res.ok) {
+        document.getElementById('createEventForm').reset();
+        loadEvents();
+        selectEvent(data.id);
+      } else {
+        alert(data.detail || 'Could not create event.');
+      }
+    });
+
+    document.getElementById('btnRefreshEvents')?.addEventListener('click', loadEvents);
+
     // Startup
     checkHealth();
     fetchMe();
@@ -1681,6 +2075,7 @@
       loadChallenges();
       loadLeaderboard();
       loadTeams();
+      loadEvents();
     });
   </script>
 </body>

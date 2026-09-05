@@ -12,7 +12,8 @@ from app.models.challenge import (
     ChallengeHint,
     ChallengeWriteup,
 )
-from app.models.event import Event, event_challenges
+from app.models.event import Event, EventStatus, event_challenges
+from app.models.event_registration import EventRegistration, RegistrationType
 from app.models.submission import Submission
 from app.models.solve import Solve
 from app.models.hint_usage import HintUsage
@@ -34,7 +35,10 @@ __all__ = [
     "ChallengeHint",
     "ChallengeWriteup",
     "Event",
+    "EventStatus",
     "event_challenges",
+    "EventRegistration",
+    "RegistrationType",
     "Submission",
     "Solve",
     "HintUsage",

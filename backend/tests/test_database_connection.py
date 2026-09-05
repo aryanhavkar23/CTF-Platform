@@ -28,6 +28,7 @@ def test_metadata_tables_registered():
         "challenge_writeups",
         "solves",
         "hint_usage",
+        "event_registrations",
     }
     registered_tables = set(Base.metadata.tables.keys())
     for table in expected_tables:

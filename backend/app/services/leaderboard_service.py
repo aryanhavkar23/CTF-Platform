@@ -70,7 +70,7 @@ class LeaderboardService:
             func.max(Solve.created_at).label("last_solve_time"),
         ).join(Solve, Solve.user_id == User.id)\
          .join(Challenge, Challenge.id == Solve.challenge_id)\
-         .filter(User.is_active == True)
+         .filter(User.is_active == True, Solve.event_id == None)
 
         if college_name:
             query = query.filter(func.lower(User.college) == college_name.strip().lower())

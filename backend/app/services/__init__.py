@@ -8,6 +8,7 @@ from app.services.leaderboard_service import LeaderboardService
 from app.services.hint_service import HintService
 from app.services.writeup_service import WriteupService
 from app.services.team_service import TeamService
+from app.services.event_service import EventService
 
 __all__ = [
     "AuthService",
@@ -20,6 +21,7 @@ __all__ = [
     "HintService",
     "WriteupService",
     "TeamService",
+    "EventService",
 ]
 
 

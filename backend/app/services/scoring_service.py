@@ -32,30 +32,42 @@ class ScoringService:
 
     @staticmethod
     def get_user_score(db: Session, user_id: UUID) -> int:
-        """Calculates user's total score from their verified solves.
+        """Calculates user's total score from their verified solves in practice mode.
         
         Guaranteed to avoid double-counting via the solves ledger.
         """
         score = db.query(func.coalesce(func.sum(Solve.points_awarded), 0))\
-            .filter(Solve.user_id == user_id)\
+            .filter(Solve.user_id == user_id, Solve.event_id == None)\
             .scalar()
         return int(score or 0)
 
     @staticmethod
     def get_user_solve_count(db: Session, user_id: UUID) -> int:
-        """Returns the total number of distinct challenges solved by the user."""
+        """Returns the total number of distinct challenges solved by the user in practice mode."""
         count = db.query(func.count(Solve.id))\
-            .filter(Solve.user_id == user_id)\
+            .filter(Solve.user_id == user_id, Solve.event_id == None)\
             .scalar()
         return int(count or 0)
 
     @staticmethod
-    def has_solved(db: Session, user_id: UUID, challenge_id: UUID) -> bool:
-        """Checks whether the user has already solved this challenge."""
-        return db.query(Solve).filter(
-            Solve.user_id == user_id,
-            Solve.challenge_id == challenge_id
-        ).first() is not None
+    def has_solved(
+        db: Session,
+        user_id: UUID,
+        challenge_id: UUID,
+        event_id: Optional[UUID] = None,
+        team_id: Optional[UUID] = None,
+    ) -> bool:
+        """Checks whether the user (or team) has already solved this challenge."""
+        query = db.query(Solve).filter(Solve.challenge_id == challenge_id)
+        if event_id is not None:
+            query = query.filter(Solve.event_id == event_id)
+            if team_id is not None:
+                query = query.filter(Solve.team_id == team_id)
+            else:
+                query = query.filter(Solve.user_id == user_id)
+        else:
+            query = query.filter(Solve.user_id == user_id, Solve.event_id == None)
+        return query.first() is not None
 
     @staticmethod
     def get_challenge_status(db: Session, user_id: UUID, challenge_id: UUID) -> Dict[str, Any]:

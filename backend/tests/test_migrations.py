@@ -43,6 +43,7 @@ def test_alembic_upgrade_and_downgrade(tmp_path):
         "challenge_writeups",
         "solves",
         "hint_usage",
+        "event_registrations",
     }
     for table in expected_tables:
         assert table in created_tables, f"Table {table} was not created by migration"
