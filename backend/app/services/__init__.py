@@ -4,6 +4,7 @@ from app.services.challenge_service import ChallengeService, hash_flag
 from app.services.storage_service import storage_service
 from app.services.scoring_service import ScoringService
 from app.services.submission_service import SubmissionService
+from app.services.leaderboard_service import LeaderboardService
 
 __all__ = [
     "AuthService",
@@ -12,4 +13,6 @@ __all__ = [
     "storage_service",
     "ScoringService",
     "SubmissionService",
+    "LeaderboardService",
 ]
+

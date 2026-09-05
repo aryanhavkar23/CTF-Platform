@@ -18,7 +18,7 @@ class Solve(Base):
     challenge_id = Column(Uuid, ForeignKey("challenges.id", ondelete="CASCADE"), nullable=False, index=True)
     submission_id = Column(Uuid, ForeignKey("submissions.id", ondelete="CASCADE"), nullable=False)
     points_awarded = Column(Integer, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False, index=True)
 
     __table_args__ = (
         UniqueConstraint("user_id", "challenge_id", name="uq_user_challenge_solve"),

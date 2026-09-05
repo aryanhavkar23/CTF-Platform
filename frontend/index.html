@@ -290,6 +290,27 @@
     }
     .status-correct { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
     .status-incorrect { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      border-radius: 6px;
+    }
+    .tab-btn.active {
+      background: var(--card-bg);
+      border-color: var(--accent-cyan);
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+    .rank-gold { color: #f59e0b; font-weight: bold; font-size: 14px; }
+    .rank-silver { color: #cbd5e1; font-weight: bold; font-size: 14px; }
+    .rank-bronze { color: #d97706; font-weight: bold; font-size: 14px; }
+    .rank-num { color: var(--text-muted); font-family: var(--font-mono); font-weight: 600; }
   </style>
 </head>
 <body>
@@ -352,9 +373,15 @@
       <div id="authState" class="user-pill">
         <em>No active session. Please log in.</em>
       </div>
-      <div id="userScoreBanner" class="score-banner" style="display:none;">
-        <span>SOLVED: <strong id="scoreSolveCount">0</strong></span>
-        <span style="color:var(--accent-green);">SCORE: <strong id="scoreTotalPoints">0</strong> PTS</span>
+      <div id="userScoreBanner" class="score-banner" style="display:none; flex-direction:column; gap:4px; align-items:flex-start;">
+        <div style="display:flex; justify-content:space-between; width:100%;">
+          <span>SOLVED: <strong id="scoreSolveCount">0</strong></span>
+          <span style="color:var(--accent-green);">SCORE: <strong id="scoreTotalPoints">0</strong> PTS</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; width:100%; font-size:11px; color:var(--text-muted); border-top:1px solid rgba(255,255,255,0.05); padding-top:4px;">
+          <span>GLOBAL RANK: <strong id="scoreGlobalRank" style="color:var(--accent-cyan);">-</strong></span>
+          <span>COLLEGE RANK: <strong id="scoreCollegeRank" style="color:var(--accent-cyan);">-</strong></span>
+        </div>
       </div>
       <div class="actions-grid">
         <button id="btnMe" class="btn-outline">GET /me</button>
@@ -414,10 +441,64 @@
     </div>
   </div>
 
+  <!-- Phase 5: Leaderboard Section -->
+  <div id="leaderboardSection" class="card" style="margin-bottom: 24px;">
+    <div class="card-title" style="flex-wrap:wrap; gap:10px;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span>6. Leaderboard</span>
+        <button id="btnTabGlobal" class="tab-btn active">Global</button>
+        <button id="btnTabCollege" class="tab-btn">College</button>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center; font-size:12px;">
+        <input type="text" id="leaderboardCollegeInput" placeholder="College (e.g. PCCOE)" style="width:150px; padding:6px 10px; font-size:12px; display:none;" />
+        <select id="leaderboardCategoryFilter" style="width:auto; padding:6px 10px; font-size:12px;">
+          <option value="">All Categories</option>
+        </select>
+        <select id="leaderboardTimeFilter" style="width:auto; padding:6px 10px; font-size:12px;">
+          <option value="all_time">All Time</option>
+          <option value="today">Today</option>
+          <option value="this_week">This Week</option>
+          <option value="this_month">This Month</option>
+        </select>
+        <button id="btnRefreshLeaderboard" class="btn-outline" style="padding:6px 10px; font-size:11px;">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:70px;">Rank</th>
+            <th>Player / Student</th>
+            <th>College</th>
+            <th>Solved</th>
+            <th style="text-align:right;">Points</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardTableBody">
+          <tr><td colspan="5" style="color:var(--text-muted); text-align:center;">Loading leaderboard...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; font-size:12px; font-family:var(--font-mono); color:var(--text-muted);">
+      <div>
+        Showing <span id="lbTotalEntries">0</span> competitors
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="btnLbPrev" class="btn-outline" style="padding:4px 10px;">&larr; Prev</button>
+        <span id="lbPageIndicator">Page 1 of 1</span>
+        <button id="btnLbNext" class="btn-outline" style="padding:4px 10px;">Next &rarr;</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Phase 3 Admin/Moderator Section -->
   <div id="adminSection" class="card" style="margin-bottom: 24px;">
     <div class="card-title">
-      <span>6. Admin / Moderator Challenge Authoring</span>
+      <span>7. Admin / Moderator Challenge Authoring</span>
       <span class="role-badge role-admin">RESTRICTED</span>
     </div>
 
@@ -562,8 +643,78 @@
           document.getElementById('scoreSolveCount').textContent = data.solves_count;
           document.getElementById('scoreTotalPoints').textContent = data.total_score;
         }
+
+        // Also fetch user leaderboard ranking
+        const rankRes = await fetch(`${API_BASE}/api/leaderboard/me`, {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        if (rankRes.ok) {
+          const rankData = await rankRes.json();
+          document.getElementById('scoreGlobalRank').textContent = rankData.global_rank ? `#${rankData.global_rank}` : 'Unranked';
+          document.getElementById('scoreCollegeRank').textContent = rankData.college_rank ? `#${rankData.college_rank}` : 'Unranked';
+        }
       } catch (e) {
-        console.error('Error fetching score:', e);
+        console.error('Error fetching score/rank:', e);
+      }
+    }
+
+    // Leaderboard state
+    let lbMode = 'global';
+    let lbPage = 1;
+    const lbPageSize = 10;
+    let lbTotalPages = 1;
+
+    async function loadLeaderboard() {
+      const cat = document.getElementById('leaderboardCategoryFilter').value;
+      const timeFrame = document.getElementById('leaderboardTimeFilter').value;
+      const collegeInput = document.getElementById('leaderboardCollegeInput').value.trim();
+
+      let url = `${API_BASE}/api/leaderboard/${lbMode}?page=${lbPage}&page_size=${lbPageSize}&time_frame=${timeFrame}`;
+      if (cat) url += `&category=${encodeURIComponent(cat)}`;
+      if (lbMode === 'college' && collegeInput) url += `&college=${encodeURIComponent(collegeInput)}`;
+
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        logResponse(res.status, 'GET', `/api/leaderboard/${lbMode}`, data);
+
+        const tbody = document.getElementById('leaderboardTableBody');
+        if (!res.ok) {
+          tbody.innerHTML = `<tr><td colspan="5" style="color:var(--accent-red); text-align:center;">${data.detail || 'Failed to load leaderboard.'}</td></tr>`;
+          document.getElementById('lbTotalEntries').textContent = '0';
+          document.getElementById('lbPageIndicator').textContent = 'Page 1 of 1';
+          return;
+        }
+
+        document.getElementById('lbTotalEntries').textContent = data.total_entries;
+        lbTotalPages = data.total_pages || 1;
+        document.getElementById('lbPageIndicator').textContent = `Page ${data.page} of ${lbTotalPages}`;
+
+        if (!data.items || data.items.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted); text-align:center;">No qualifying solvers found for this filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.items.map(entry => {
+          let rankDisplay = `<span class="rank-num">#${entry.rank}</span>`;
+          if (entry.rank === 1) rankDisplay = `<span class="rank-gold">🥇 1</span>`;
+          else if (entry.rank === 2) rankDisplay = `<span class="rank-silver">🥈 2</span>`;
+          else if (entry.rank === 3) rankDisplay = `<span class="rank-bronze">🥉 3</span>`;
+
+          const isMe = currentUser && currentUser.id === entry.user_id;
+          return `
+            <tr style="${isMe ? 'background: rgba(6, 182, 212, 0.1); border-left: 2px solid var(--accent-cyan);' : ''}">
+              <td>${rankDisplay}</td>
+              <td><strong>${entry.username}</strong>${isMe ? ' <span style="font-size:10px; color:var(--accent-cyan);">(You)</span>' : ''}</td>
+              <td style="color:var(--text-muted); font-size:12px;">${entry.college || 'N/A'}</td>
+              <td style="font-family:var(--font-mono); font-size:12px;">${entry.solved_count}</td>
+              <td style="text-align:right; font-family:var(--font-mono); font-weight:bold; color:var(--accent-green);">${entry.total_points} PTS</td>
+            </tr>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('Error loading leaderboard:', e);
       }
     }
 
@@ -613,9 +764,11 @@
         categoriesCache = await res.json();
         const filterSelect = document.getElementById('filterCategory');
         const createSelect = document.getElementById('challCategory');
+        const lbCatFilter = document.getElementById('leaderboardCategoryFilter');
         
         filterSelect.innerHTML = '<option value="">All Categories</option>';
         createSelect.innerHTML = '';
+        if (lbCatFilter) lbCatFilter.innerHTML = '<option value="">All Categories</option>';
 
         categoriesCache.forEach(cat => {
           const opt1 = document.createElement('option');
@@ -627,6 +780,13 @@
           opt2.value = cat.id;
           opt2.textContent = cat.name;
           createSelect.appendChild(opt2);
+
+          if (lbCatFilter) {
+            const opt3 = document.createElement('option');
+            opt3.value = cat.name;
+            opt3.textContent = cat.name;
+            lbCatFilter.appendChild(opt3);
+          }
         });
       } catch (e) {
         console.error('Error loading categories:', e);
@@ -745,6 +905,7 @@
               loadChallenges();
               fetchScore();
               fetchSubmissions();
+              loadLeaderboard();
             }, 800);
           } else {
             feedback.style.color = 'var(--accent-red)';
@@ -811,6 +972,7 @@
         localStorage.setItem('owasp_jwt', currentToken);
         updateSessionUI(data.user);
         loadChallenges();
+        loadLeaderboard();
       }
     });
 
@@ -821,6 +983,7 @@
       updateSessionUI(null);
       logResponse(200, 'LOCAL', 'session/clear', { message: 'JWT cleared from client storage' });
       loadChallenges();
+      loadLeaderboard();
     });
 
     document.getElementById('btnMe').addEventListener('click', async () => {
@@ -877,10 +1040,55 @@
     document.getElementById('filterCategory').addEventListener('change', loadChallenges);
     document.getElementById('filterDifficulty').addEventListener('change', loadChallenges);
 
+    // Leaderboard Controls
+    document.getElementById('btnTabGlobal').addEventListener('click', () => {
+      lbMode = 'global';
+      lbPage = 1;
+      document.getElementById('btnTabGlobal').classList.add('active');
+      document.getElementById('btnTabCollege').classList.remove('active');
+      document.getElementById('leaderboardCollegeInput').style.display = 'none';
+      loadLeaderboard();
+    });
+
+    document.getElementById('btnTabCollege').addEventListener('click', () => {
+      lbMode = 'college';
+      lbPage = 1;
+      document.getElementById('btnTabCollege').classList.add('active');
+      document.getElementById('btnTabGlobal').classList.remove('active');
+      const colInput = document.getElementById('leaderboardCollegeInput');
+      colInput.style.display = 'inline-block';
+      if (!colInput.value && currentUser && currentUser.college) {
+        colInput.value = currentUser.college;
+      }
+      loadLeaderboard();
+    });
+
+    document.getElementById('btnLbPrev').addEventListener('click', () => {
+      if (lbPage > 1) {
+        lbPage--;
+        loadLeaderboard();
+      }
+    });
+
+    document.getElementById('btnLbNext').addEventListener('click', () => {
+      if (lbPage < lbTotalPages) {
+        lbPage++;
+        loadLeaderboard();
+      }
+    });
+
+    document.getElementById('btnRefreshLeaderboard').addEventListener('click', loadLeaderboard);
+    document.getElementById('leaderboardCategoryFilter').addEventListener('change', () => { lbPage = 1; loadLeaderboard(); });
+    document.getElementById('leaderboardTimeFilter').addEventListener('change', () => { lbPage = 1; loadLeaderboard(); });
+    document.getElementById('leaderboardCollegeInput').addEventListener('change', () => { lbPage = 1; loadLeaderboard(); });
+
     // Startup
     checkHealth();
     fetchMe();
-    loadCategories().then(loadChallenges);
+    loadCategories().then(() => {
+      loadChallenges();
+      loadLeaderboard();
+    });
   </script>
 </body>
 </html>

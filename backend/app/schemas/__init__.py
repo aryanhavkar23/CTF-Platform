@@ -22,6 +22,11 @@ from app.schemas.submission import (
     ChallengeStatusResponse,
     UserScoreResponse,
 )
+from app.schemas.leaderboard import (
+    LeaderboardEntry,
+    LeaderboardResponse,
+    UserRankResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -45,4 +50,8 @@ __all__ = [
     "SubmissionHistoryResponse",
     "ChallengeStatusResponse",
     "UserScoreResponse",
+    "LeaderboardEntry",
+    "LeaderboardResponse",
+    "UserRankResponse",
 ]
+
