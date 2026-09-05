@@ -14,6 +14,7 @@ from app.models.challenge import (
 )
 from app.models.event import Event, event_challenges
 from app.models.submission import Submission
+from app.models.solve import Solve
 
 __all__ = [
     "Base",
@@ -33,4 +34,5 @@ __all__ = [
     "Event",
     "event_challenges",
     "Submission",
+    "Solve",
 ]

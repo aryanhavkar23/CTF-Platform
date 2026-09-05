@@ -15,6 +15,13 @@ from app.schemas.challenge import (
     WriteupUpdate,
     WriteupResponse,
 )
+from app.schemas.submission import (
+    SubmissionCreate,
+    SubmissionResponse,
+    SubmissionHistoryResponse,
+    ChallengeStatusResponse,
+    UserScoreResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -33,4 +40,9 @@ __all__ = [
     "WriteupCreate",
     "WriteupUpdate",
     "WriteupResponse",
+    "SubmissionCreate",
+    "SubmissionResponse",
+    "SubmissionHistoryResponse",
+    "ChallengeStatusResponse",
+    "UserScoreResponse",
 ]

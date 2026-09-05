@@ -37,9 +37,14 @@ wheels/
 .coverage
 htmlcov/
 
+# Uploads
+uploads/
+backend/uploads/
+
 # IDE & OS
 .vscode/
 .idea/
 Thumbs.db
 Desktop.ini
 .DS_Store
+

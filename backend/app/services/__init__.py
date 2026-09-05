@@ -2,5 +2,14 @@
 from app.services.auth_service import AuthService
 from app.services.challenge_service import ChallengeService, hash_flag
 from app.services.storage_service import storage_service
+from app.services.scoring_service import ScoringService
+from app.services.submission_service import SubmissionService
 
-__all__ = ["AuthService", "ChallengeService", "hash_flag", "storage_service"]
+__all__ = [
+    "AuthService",
+    "ChallengeService",
+    "hash_flag",
+    "storage_service",
+    "ScoringService",
+    "SubmissionService",
+]

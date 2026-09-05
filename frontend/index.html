@@ -205,7 +205,11 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
+    }
+    .challenge-card.solved-card {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: #0a171e;
     }
     .challenge-card:hover { border-color: var(--accent-cyan); }
     .challenge-meta {
@@ -217,6 +221,75 @@
     }
     .challenge-title { font-size: 15px; font-weight: 600; color: #fff; }
     .points-tag { font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan); }
+    
+    .solved-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border: 1px solid var(--accent-green);
+    }
+    .unsolved-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      border: 1px dashed var(--border-color);
+    }
+    .score-banner {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 182, 212, 0.1));
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    th {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      background: #0d1322;
+    }
+    tr:hover td { background: #131d33; }
+    .status-pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .status-correct { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+    .status-incorrect { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
   </style>
 </head>
 <body>
@@ -279,6 +352,10 @@
       <div id="authState" class="user-pill">
         <em>No active session. Please log in.</em>
       </div>
+      <div id="userScoreBanner" class="score-banner" style="display:none;">
+        <span>SOLVED: <strong id="scoreSolveCount">0</strong></span>
+        <span style="color:var(--accent-green);">SCORE: <strong id="scoreTotalPoints">0</strong> PTS</span>
+      </div>
       <div class="actions-grid">
         <button id="btnMe" class="btn-outline">GET /me</button>
         <button id="btnSeedCats" class="btn-purple">Seed Categories</button>
@@ -286,11 +363,11 @@
     </div>
   </div>
 
-  <!-- Phase 3: Challenge Arena & Management -->
+  <!-- Phase 3 & 4: Challenge Arena & Flag Submission -->
   <div style="margin-bottom: 24px;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
       <h2 style="font-size: 18px; color: var(--accent-cyan); font-family: var(--font-mono);">
-        4. CHALLENGE ARENA (BROWSE &amp; DETAIL)
+        4. CHALLENGE ARENA &amp; FLAG SUBMISSION
       </h2>
       <div style="display: flex; gap: 10px;">
         <select id="filterCategory" style="width: auto;">
@@ -303,20 +380,44 @@
           <option value="hard">Hard</option>
           <option value="insane">Insane</option>
         </select>
-        <button id="btnRefreshChallenges" class="btn-outline">Refresh Challenges</button>
+        <button id="btnRefreshChallenges" class="btn-outline">Refresh</button>
       </div>
     </div>
 
     <!-- Challenges Grid -->
-    <div id="challengesList" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+    <div id="challengesList" class="grid" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));">
       <div style="color: var(--text-muted);">Loading challenges...</div>
+    </div>
+  </div>
+
+  <!-- Phase 4: Submission History Section -->
+  <div id="submissionsSection" class="card" style="margin-bottom: 24px;">
+    <div class="card-title">
+      <span>5. My Flag Submission History</span>
+      <button id="btnRefreshSubmissions" class="btn-outline" style="padding:4px 10px; font-size:11px;">Refresh History</button>
+    </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Challenge</th>
+            <th>Submitted Flag</th>
+            <th>Result</th>
+            <th>Points</th>
+          </tr>
+        </thead>
+        <tbody id="submissionsTableBody">
+          <tr><td colspan="5" style="color:var(--text-muted); text-align:center;">Log in to view submission history.</td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
   <!-- Phase 3 Admin/Moderator Section -->
   <div id="adminSection" class="card" style="margin-bottom: 24px;">
     <div class="card-title">
-      <span>5. Admin / Moderator Challenge Authoring</span>
+      <span>6. Admin / Moderator Challenge Authoring</span>
       <span class="role-badge role-admin">RESTRICTED</span>
     </div>
 
@@ -383,6 +484,7 @@
     let currentToken = localStorage.getItem('owasp_jwt') || '';
     let currentUser = null;
     let categoriesCache = [];
+    let solvedChallengeIds = new Set();
 
     function logResponse(status, method, url, data) {
       document.getElementById('responseStatus').textContent = `${method} ${url} → HTTP ${status}`;
@@ -396,7 +498,7 @@
         const data = await res.json();
         const badge = document.getElementById('healthBadge');
         if (data.status === 'healthy') {
-          badge.textContent = 'API ONLINE (DB & Auth Active)';
+          badge.textContent = 'API ONLINE (DB, Auth & Scoring Active)';
           badge.classList.add('online');
         }
       } catch (e) {
@@ -407,8 +509,12 @@
     function updateSessionUI(user) {
       currentUser = user;
       const container = document.getElementById('authState');
+      const scoreBanner = document.getElementById('userScoreBanner');
       if (!user) {
         container.innerHTML = `<em>No active session. Please log in.</em>`;
+        scoreBanner.style.display = 'none';
+        solvedChallengeIds.clear();
+        updateSubmissionsTable([]);
         return;
       }
       container.innerHTML = `
@@ -419,6 +525,9 @@
         <div style="color:var(--text-muted); font-size:11px; margin-top:4px;">${user.email}</div>
         <div style="color:var(--text-muted); font-size:11px;">College: ${user.college || 'N/A'}</div>
       `;
+      scoreBanner.style.display = 'flex';
+      fetchScore();
+      fetchSubmissions();
     }
 
     async function fetchMe() {
@@ -440,6 +549,62 @@
       } catch (e) {
         updateSessionUI(null);
       }
+    }
+
+    async function fetchScore() {
+      if (!currentToken) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/auth/me/score`, {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('scoreSolveCount').textContent = data.solves_count;
+          document.getElementById('scoreTotalPoints').textContent = data.total_score;
+        }
+      } catch (e) {
+        console.error('Error fetching score:', e);
+      }
+    }
+
+    async function fetchSubmissions() {
+      if (!currentToken) {
+        updateSubmissionsTable([]);
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/submissions/me`, {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        if (res.ok) {
+          const submissions = await res.json();
+          updateSubmissionsTable(submissions);
+        }
+      } catch (e) {
+        console.error('Error fetching submissions:', e);
+      }
+    }
+
+    function updateSubmissionsTable(submissions) {
+      const tbody = document.getElementById('submissionsTableBody');
+      if (!submissions || submissions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted); text-align:center;">No submissions recorded yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = submissions.map(s => {
+        const date = new Date(s.submitted_at).toLocaleTimeString();
+        const statusClass = s.is_correct ? 'status-correct' : 'status-incorrect';
+        const statusText = s.is_correct ? '✓ CORRECT' : '✗ INCORRECT';
+        return `
+          <tr>
+            <td style="font-family:var(--font-mono); font-size:12px;">${date}</td>
+            <td style="font-family:var(--font-mono); font-size:12px;">${s.challenge_id.slice(0, 8)}...</td>
+            <td style="font-family:var(--font-mono); font-size:12px;"><code>${s.submitted_flag}</code></td>
+            <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+            <td style="font-family:var(--font-mono); font-weight:bold; color:${s.points_awarded > 0 ? 'var(--accent-green)' : 'var(--text-muted)'};">+${s.points_awarded}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     async function loadCategories() {
@@ -487,28 +652,117 @@
           return;
         }
 
-        container.innerHTML = challenges.map(c => `
-          <div class="challenge-card">
-            <div>
-              <div class="challenge-meta">
-                <span>${c.category ? c.category.name : 'Category'}</span>
-                <span class="diff-badge diff-${c.difficulty}">${c.difficulty}</span>
+        // Check solved status for each challenge if logged in
+        if (currentToken) {
+          await Promise.all(challenges.map(async (c) => {
+            try {
+              const statusRes = await fetch(`${API_BASE}/api/challenges/${c.id}/status`, { headers });
+              if (statusRes.ok) {
+                const st = await statusRes.json();
+                if (st.solved) solvedChallengeIds.add(c.id);
+                else solvedChallengeIds.delete(c.id);
+              }
+            } catch (e) {}
+          }));
+        }
+
+        container.innerHTML = challenges.map(c => {
+          const isSolved = solvedChallengeIds.has(c.id);
+          return `
+            <div class="challenge-card ${isSolved ? 'solved-card' : ''}" id="card-${c.id}">
+              <div>
+                <div class="challenge-meta">
+                  <span>${c.category ? c.category.name : 'Category'}</span>
+                  <div>
+                    <span class="diff-badge diff-${c.difficulty}">${c.difficulty}</span>
+                    ${isSolved ? '<span class="solved-badge">✓ SOLVED</span>' : '<span class="unsolved-badge">UNSOLVED</span>'}
+                  </div>
+                </div>
+                <div class="challenge-title" style="margin-top:8px;">${c.title}</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                  ${c.description.length > 80 ? c.description.slice(0, 80) + '...' : c.description}
+                </div>
               </div>
-              <div class="challenge-title" style="margin-top:8px;">${c.title}</div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-                ${c.description.length > 80 ? c.description.slice(0, 80) + '...' : c.description}
+
+              <!-- Flag Submission Form -->
+              <div style="border-top:1px solid #1a2234; padding-top:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <span class="points-tag">${c.points} PTS</span>
+                  <button class="btn-outline" style="padding:4px 8px; font-size:11px;" onclick="viewChallengeDetails('${c.id}')">Details</button>
+                </div>
+                ${isSolved ? `
+                  <div style="color:var(--accent-green); font-size:12px; font-family:var(--font-mono); font-weight:600; text-align:center; padding:6px; background:rgba(16,185,129,0.1); border-radius:4px;">
+                    Challenge Solved (+${c.points} pts)
+                  </div>
+                ` : `
+                  <form onsubmit="submitFlag(event, '${c.id}')" style="display:flex; gap:6px;">
+                    <input type="text" id="flagInput-${c.id}" placeholder="flag{...}" required style="padding:6px 8px; font-size:12px;" />
+                    <button type="submit" class="btn-green" style="padding:6px 12px; font-size:12px; white-space:nowrap;">Submit</button>
+                  </form>
+                  <div id="feedback-${c.id}" style="font-size:11px; margin-top:4px; font-family:var(--font-mono);"></div>
+                `}
               </div>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #1a2234; padding-top:10px;">
-              <span class="points-tag">${c.points} PTS</span>
-              <button class="btn-outline" style="padding:6px 12px;" onclick="viewChallengeDetails('${c.id}')">View Details</button>
-            </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       } catch (e) {
         console.error(e);
       }
     }
+
+    window.submitFlag = async function(event, challengeId) {
+      event.preventDefault();
+      if (!currentToken) {
+        alert('Please log in to submit flags.');
+        return;
+      }
+      const flagInput = document.getElementById(`flagInput-${challengeId}`);
+      const feedback = document.getElementById(`feedback-${challengeId}`);
+      const flag = flagInput.value.trim();
+      if (!flag) return;
+
+      feedback.textContent = 'Validating flag...';
+      feedback.style.color = 'var(--text-muted)';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/submissions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentToken}`
+          },
+          body: JSON.stringify({ challenge_id: challengeId, flag: flag })
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', '/api/submissions', data);
+
+        if (res.status === 200) {
+          if (data.is_correct) {
+            feedback.style.color = 'var(--accent-green)';
+            feedback.textContent = `Correct! +${data.points_awarded} PTS`;
+            solvedChallengeIds.add(challengeId);
+            setTimeout(() => {
+              loadChallenges();
+              fetchScore();
+              fetchSubmissions();
+            }, 800);
+          } else {
+            feedback.style.color = 'var(--accent-red)';
+            feedback.textContent = data.message || 'Incorrect flag. Try again!';
+            fetchSubmissions();
+          }
+        } else if (res.status === 429) {
+          feedback.style.color = 'var(--accent-yellow)';
+          feedback.textContent = data.detail || 'Rate limit/cooldown active. Please wait.';
+        } else {
+          feedback.style.color = 'var(--accent-red)';
+          feedback.textContent = data.detail || 'Submission failed.';
+        }
+      } catch (e) {
+        feedback.style.color = 'var(--accent-red)';
+        feedback.textContent = 'Submission error: ' + e.message;
+      }
+    };
 
     window.viewChallengeDetails = async function(id) {
       const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
@@ -581,6 +835,8 @@
       logResponse(res.status, 'GET', '/api/categories', data);
       loadCategories();
     });
+
+    document.getElementById('btnRefreshSubmissions').addEventListener('click', fetchSubmissions);
 
     // Create Challenge
     document.getElementById('createChallengeForm').addEventListener('submit', async (e) => {

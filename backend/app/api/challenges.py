@@ -19,7 +19,9 @@ from app.schemas.challenge import (
     WriteupCreate,
     WriteupResponse,
 )
+from app.schemas.submission import ChallengeStatusResponse
 from app.services.challenge_service import ChallengeService
+from app.services.scoring_service import ScoringService
 from app.services.storage_service import storage_service
 from app.api.deps import require_role, get_current_user_optional, get_current_active_user
 
@@ -63,6 +65,24 @@ def get_challenge(
     if is_admin_or_mod:
         return ChallengeAdminResponse.model_validate(challenge)
     return ChallengeResponse.model_validate(challenge)
+
+
+@router.get("/{challenge_id}/status", response_model=ChallengeStatusResponse, status_code=status.HTTP_200_OK)
+def get_challenge_status(
+    challenge_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Returns whether the authenticated user has solved, attempted, or not attempted the challenge."""
+    # Ensure challenge exists
+    ChallengeService.get_challenge(db, challenge_id, is_admin_or_mod=True)
+    status_info = ScoringService.get_challenge_status(db, current_user.id, challenge_id)
+    return ChallengeStatusResponse(
+        challenge_id=status_info["challenge_id"],
+        status=status_info["status"],
+        points_earned=status_info["points_earned"],
+        solved_at=status_info["solved_at"]
+    )
 
 
 @router.post("", response_model=ChallengeAdminResponse, status_code=status.HTTP_201_CREATED)

@@ -1,0 +1,74 @@
+from typing import Optional, Dict, Any
+from uuid import UUID
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+
+from app.models.solve import Solve
+from app.models.submission import Submission
+
+
+class ScoringService:
+    """Authoritative scoring calculations derived from verified solves."""
+
+    @staticmethod
+    def get_user_score(db: Session, user_id: UUID) -> int:
+        """Calculates user's total score from their verified solves.
+        
+        Guaranteed to avoid double-counting via the solves ledger.
+        """
+        score = db.query(func.coalesce(func.sum(Solve.points_awarded), 0))\
+            .filter(Solve.user_id == user_id)\
+            .scalar()
+        return int(score or 0)
+
+    @staticmethod
+    def get_user_solve_count(db: Session, user_id: UUID) -> int:
+        """Returns the total number of distinct challenges solved by the user."""
+        count = db.query(func.count(Solve.id))\
+            .filter(Solve.user_id == user_id)\
+            .scalar()
+        return int(count or 0)
+
+    @staticmethod
+    def has_solved(db: Session, user_id: UUID, challenge_id: UUID) -> bool:
+        """Checks whether the user has already solved this challenge."""
+        return db.query(Solve).filter(
+            Solve.user_id == user_id,
+            Solve.challenge_id == challenge_id
+        ).first() is not None
+
+    @staticmethod
+    def get_challenge_status(db: Session, user_id: UUID, challenge_id: UUID) -> Dict[str, Any]:
+        """Determines solve and attempt status for a user and challenge."""
+        solve = db.query(Solve).filter(
+            Solve.user_id == user_id,
+            Solve.challenge_id == challenge_id
+        ).first()
+
+        if solve:
+            return {
+                "challenge_id": challenge_id,
+                "status": "solved",
+                "points_earned": solve.points_awarded,
+                "solved_at": solve.created_at
+            }
+
+        attempt = db.query(Submission).filter(
+            Submission.user_id == user_id,
+            Submission.challenge_id == challenge_id
+        ).first()
+
+        if attempt:
+            return {
+                "challenge_id": challenge_id,
+                "status": "attempted",
+                "points_earned": 0,
+                "solved_at": None
+            }
+
+        return {
+            "challenge_id": challenge_id,
+            "status": "not_attempted",
+            "points_earned": 0,
+            "solved_at": None
+        }

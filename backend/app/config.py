@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
+    # Submission & Rate Limiting
+    SUBMISSION_RATE_LIMIT_PER_MINUTE: int = 10
+    SUBMISSION_COOLDOWN_SECONDS: int = 2
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",
         env_file_encoding="utf-8",

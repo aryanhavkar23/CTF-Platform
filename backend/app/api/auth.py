@@ -5,7 +5,9 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.schemas.user import UserRegisterRequest, UserResponse
 from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.submission import UserScoreResponse
 from app.services.auth_service import AuthService
+from app.services.scoring_service import ScoringService
 from app.core.security import create_access_token
 from app.api.deps import get_current_active_user, require_role
 
@@ -49,6 +51,22 @@ def get_me(
 ):
     """Returns the authenticated user's profile. Rejects unauthenticated callers."""
     return current_user
+
+
+@router.get("/me/score", response_model=UserScoreResponse, status_code=status.HTTP_200_OK)
+def get_my_score(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Returns the authenticated user's authoritative score and solve count."""
+    total_score = ScoringService.get_user_score(db, current_user.id)
+    solves_count = ScoringService.get_user_solve_count(db, current_user.id)
+    return UserScoreResponse(
+        user_id=current_user.id,
+        username=current_user.username,
+        total_points=total_score,
+        solves_count=solves_count
+    )
 
 
 # Role-Based Authorization Probes (Used for RBAC testing and verification)
