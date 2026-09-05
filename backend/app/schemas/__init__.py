@@ -32,6 +32,15 @@ from app.schemas.leaderboard import (
     LeaderboardResponse,
     UserRankResponse,
 )
+from app.schemas.team import (
+    TeamCreate,
+    TeamUpdate,
+    AddTeamMemberRequest,
+    TransferOwnershipRequest,
+    TeamMemberResponse,
+    TeamResponse,
+    TeamDetailResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -59,5 +68,13 @@ __all__ = [
     "LeaderboardEntry",
     "LeaderboardResponse",
     "UserRankResponse",
+    "TeamCreate",
+    "TeamUpdate",
+    "AddTeamMemberRequest",
+    "TransferOwnershipRequest",
+    "TeamMemberResponse",
+    "TeamResponse",
+    "TeamDetailResponse",
 ]
+
 

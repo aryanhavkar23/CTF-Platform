@@ -534,10 +534,57 @@
     </div>
   </div>
 
+  <!-- Phase 7: Team & Member Management Section -->
+  <div id="teamsSection" class="card" style="margin-bottom: 24px;">
+    <div class="card-title">
+      <span>7. Teams &amp; Team Members</span>
+      <button id="btnRefreshTeams" class="btn-outline" style="padding:4px 10px; font-size:11px;">Refresh Teams</button>
+    </div>
+
+    <!-- Create Team Form -->
+    <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:12px; margin-bottom:16px;">
+      <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:10px;">CREATE NEW TEAM</h4>
+      <form id="createTeamForm" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+        <div>
+          <label>TEAM NAME</label>
+          <input type="text" id="newTeamName" required placeholder="e.g. CyberHacks" />
+        </div>
+        <div>
+          <label>COLLEGE (OPTIONAL)</label>
+          <input type="text" id="newTeamCollege" placeholder="e.g. OWASP Tech" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label>DESCRIPTION</label>
+          <input type="text" id="newTeamDesc" placeholder="Team bio or purpose..." />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <button type="submit" class="btn-green" style="padding:6px 14px; font-size:12px;">Create Team</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Teams List & Selected Team Details -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+      <div>
+        <h4 style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono); margin-bottom:8px;">ACTIVE TEAMS</h4>
+        <div id="teamsList" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto;">
+          <div style="color:var(--text-muted); font-size:12px;">Loading teams...</div>
+        </div>
+      </div>
+
+      <div id="teamDetailsPanel" style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <h4 style="font-size:12px; color:var(--accent-purple); font-family:var(--font-mono); margin-bottom:8px;">TEAM DETAILS</h4>
+        <div id="teamDetailsContent" style="color:var(--text-muted); font-size:12px;">
+          Select a team from the list to view members and manage roster.
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Phase 3 Admin/Moderator Section -->
   <div id="adminSection" class="card" style="margin-bottom: 24px;">
     <div class="card-title">
-      <span>7. Admin / Moderator Challenge Authoring</span>
+      <span>8. Admin / Moderator Challenge Authoring</span>
       <span class="role-badge role-admin">RESTRICTED</span>
     </div>
 
@@ -1357,12 +1404,283 @@
     document.getElementById('leaderboardTimeFilter').addEventListener('change', () => { lbPage = 1; loadLeaderboard(); });
     document.getElementById('leaderboardCollegeInput').addEventListener('change', () => { lbPage = 1; loadLeaderboard(); });
 
+    // ==========================================
+    // Phase 7: Teams & Team Members
+    // ==========================================
+    let selectedTeamId = null;
+
+    async function loadTeams() {
+      const listContainer = document.getElementById('teamsList');
+      if (!listContainer) return;
+      listContainer.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Loading teams...</div>';
+      try {
+        const res = await fetch(`${API_BASE}/api/teams`);
+        const teams = await res.json();
+        logResponse(res.status, 'GET', '/api/teams', teams);
+        if (!teams || teams.length === 0) {
+          listContainer.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No active teams found.</div>';
+          return;
+        }
+        listContainer.innerHTML = teams.map(t => `
+          <div style="background:#0d1322; border:1px solid var(--border-color); border-radius:6px; padding:10px; cursor:pointer; transition:border-color 0.2s;"
+               onmouseover="this.style.borderColor='var(--accent-cyan)'"
+               onmouseout="this.style.borderColor='var(--border-color)'"
+               onclick="selectTeam('${t.id}')">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>${t.name}</strong>
+              <span style="font-family:var(--font-mono); font-size:11px; color:var(--accent-cyan);">${t.member_count}/${t.max_team_size} members</span>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+              Owner: <code>${t.owner_username || 'Unknown'}</code> ${t.college ? ' | ' + t.college : ''}
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        listContainer.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">Error loading teams: ${e.message}</div>`;
+      }
+    }
+
+    window.selectTeam = async function(teamId) {
+      selectedTeamId = teamId;
+      const detailsContainer = document.getElementById('teamDetailsContent');
+      if (!detailsContainer) return;
+      detailsContainer.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Loading team details...</div>';
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}`);
+        const team = await res.json();
+        logResponse(res.status, 'GET', `/api/teams/${teamId}`, team);
+        if (!res.ok) {
+          detailsContainer.innerHTML = `<div style="color:var(--accent-red);">${team.detail || 'Failed to load team details.'}</div>`;
+          return;
+        }
+
+        const isOwner = currentUser && currentUser.id === team.owner_id;
+        const myMembership = currentUser && team.members ? team.members.find(m => m.user_id === currentUser.id) : null;
+        const isMember = !!myMembership;
+
+        detailsContainer.innerHTML = `
+          <div style="margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="font-size:16px; color:#fff;">${team.name}</h3>
+              <span class="diff-badge diff-easy">${team.member_count} / ${team.max_team_size} MEMBERS</span>
+            </div>
+            <div style="color:var(--text-muted); font-size:12px; margin-top:4px;">${team.description || 'No description provided.'}</div>
+            <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">College: ${team.college || 'N/A'}</div>
+          </div>
+
+          <!-- Roster -->
+          <div style="border-top:1px solid var(--border-color); padding-top:10px; margin-top:10px;">
+            <h5 style="font-size:11px; color:var(--accent-yellow); font-family:var(--font-mono); margin-bottom:8px;">ROSTER</h5>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${team.members.map(m => `
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#050811; padding:6px 10px; border-radius:4px; font-size:12px;">
+                  <div>
+                    <strong>${m.username}</strong>
+                    <span style="font-size:10px; font-family:var(--font-mono); margin-left:6px; color:${m.role === 'owner' ? 'var(--accent-yellow)' : 'var(--text-muted)'}; text-transform:uppercase;">[${m.role}]</span>
+                  </div>
+                  ${isOwner && m.user_id !== currentUser.id ? `
+                    <button class="btn-red" style="padding:2px 6px; font-size:10px;" onclick="removeMemberFromTeam('${team.id}', '${m.user_id}')">Remove</button>
+                  ` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div style="border-top:1px solid var(--border-color); padding-top:12px; margin-top:12px;">
+            ${isOwner ? `
+              <!-- Add Member -->
+              <div style="margin-bottom:12px;">
+                <label style="font-size:11px;">ADD MEMBER (USERNAME OR USER ID)</label>
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                  <input type="text" id="addMemberInput" placeholder="Username..." style="padding:6px; font-size:12px;" />
+                  <button class="btn-green" style="padding:6px 10px; font-size:11px; white-space:nowrap;" onclick="addMemberToTeam('${team.id}')">Add Member</button>
+                </div>
+              </div>
+
+              <!-- Transfer Ownership -->
+              <div style="margin-bottom:12px;">
+                <label style="font-size:11px;">TRANSFER OWNERSHIP</label>
+                <div style="display:flex; gap:6px; margin-top:4px;">
+                  <select id="transferOwnerSelect" style="padding:6px; font-size:12px;">
+                    <option value="">Select Member</option>
+                    ${team.members.filter(m => m.user_id !== currentUser.id).map(m => `
+                      <option value="${m.user_id}">${m.username}</option>
+                    `).join('')}
+                  </select>
+                  <button class="btn-yellow" style="padding:6px 10px; font-size:11px; white-space:nowrap;" onclick="transferTeamOwnership('${team.id}')">Transfer</button>
+                </div>
+              </div>
+
+              <!-- Deactivate -->
+              <button class="btn-red" style="padding:4px 10px; font-size:11px;" onclick="deactivateCurrentTeam('${team.id}')">Deactivate Team</button>
+            ` : ''}
+
+            ${isMember && !isOwner ? `
+              <button class="btn-outline" style="padding:4px 10px; font-size:11px; color:var(--accent-red); border-color:var(--accent-red);" onclick="leaveCurrentTeam('${team.id}')">Leave Team</button>
+            ` : ''}
+          </div>
+        `;
+      } catch (e) {
+        detailsContainer.innerHTML = `<div style="color:var(--accent-red);">Error: ${e.message}</div>`;
+      }
+    };
+
+    window.addMemberToTeam = async function(teamId) {
+      if (!currentToken) { alert('Please log in.'); return; }
+      const input = document.getElementById('addMemberInput');
+      const val = input.value.trim();
+      if (!val) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}/members`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentToken}`
+          },
+          body: JSON.stringify({ username: val })
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/teams/${teamId}/members`, data);
+        if (res.ok) {
+          selectTeam(teamId);
+          loadTeams();
+        } else {
+          alert(data.detail || 'Could not add member.');
+        }
+      } catch (e) {
+        alert('Error adding member: ' + e.message);
+      }
+    };
+
+    window.removeMemberFromTeam = async function(teamId, userId) {
+      if (!currentToken) { alert('Please log in.'); return; }
+      if (!confirm('Are you sure you want to remove this member?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}/members/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'DELETE', `/api/teams/${teamId}/members/${userId}`, data);
+        if (res.ok) {
+          selectTeam(teamId);
+          loadTeams();
+        } else {
+          alert(data.detail || 'Could not remove member.');
+        }
+      } catch (e) {
+        alert('Error removing member: ' + e.message);
+      }
+    };
+
+    window.leaveCurrentTeam = async function(teamId) {
+      if (!currentToken) { alert('Please log in.'); return; }
+      if (!confirm('Are you sure you want to leave this team?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}/leave`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'DELETE', `/api/teams/${teamId}/leave`, data);
+        if (res.ok) {
+          selectTeam(teamId);
+          loadTeams();
+        } else {
+          alert(data.detail || 'Could not leave team.');
+        }
+      } catch (e) {
+        alert('Error leaving team: ' + e.message);
+      }
+    };
+
+    window.transferTeamOwnership = async function(teamId) {
+      if (!currentToken) { alert('Please log in.'); return; }
+      const sel = document.getElementById('transferOwnerSelect');
+      const newOwnerId = sel.value;
+      if (!newOwnerId) { alert('Please select a member to transfer ownership to.'); return; }
+      if (!confirm('Transferring ownership will demote you to a regular member. Proceed?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}/transfer-owner`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentToken}`
+          },
+          body: JSON.stringify({ new_owner_id: newOwnerId })
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/teams/${teamId}/transfer-owner`, data);
+        if (res.ok) {
+          selectTeam(teamId);
+          loadTeams();
+        } else {
+          alert(data.detail || 'Could not transfer ownership.');
+        }
+      } catch (e) {
+        alert('Error transferring ownership: ' + e.message);
+      }
+    };
+
+    window.deactivateCurrentTeam = async function(teamId) {
+      if (!currentToken) { alert('Please log in.'); return; }
+      if (!confirm('Are you sure you want to deactivate this team?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/teams/${teamId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'DELETE', `/api/teams/${teamId}`, data);
+        if (res.ok) {
+          document.getElementById('teamDetailsContent').innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Team deactivated.</div>';
+          loadTeams();
+        } else {
+          alert(data.detail || 'Could not deactivate team.');
+        }
+      } catch (e) {
+        alert('Error deactivating team: ' + e.message);
+      }
+    };
+
+    // Create Team Form Handler
+    document.getElementById('createTeamForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) { alert('Please log in to create a team.'); return; }
+      const payload = {
+        name: document.getElementById('newTeamName').value.trim(),
+        college: document.getElementById('newTeamCollege').value.trim() || null,
+        description: document.getElementById('newTeamDesc').value.trim() || null
+      };
+      const res = await fetch(`${API_BASE}/api/teams`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      logResponse(res.status, 'POST', '/api/teams', data);
+      if (res.ok) {
+        document.getElementById('createTeamForm').reset();
+        loadTeams();
+        selectTeam(data.id);
+      } else {
+        alert(data.detail || 'Could not create team.');
+      }
+    });
+
+    document.getElementById('btnRefreshTeams')?.addEventListener('click', loadTeams);
+
     // Startup
     checkHealth();
     fetchMe();
     loadCategories().then(() => {
       loadChallenges();
       loadLeaderboard();
+      loadTeams();
     });
   </script>
 </body>

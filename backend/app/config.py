@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     SUBMISSION_RATE_LIMIT_PER_MINUTE: int = 10
     SUBMISSION_COOLDOWN_SECONDS: int = 2
 
+    # Teams
+    MAX_TEAM_SIZE: int = 4
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE) if ENV_FILE.exists() else ".env",
         env_file_encoding="utf-8",

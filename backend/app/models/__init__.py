@@ -1,7 +1,7 @@
 from app.database import Base
 from app.models.base import TimeStampedModel
 from app.models.user import User, UserRole
-from app.models.team import Team, team_members
+from app.models.team import Team, TeamMember, team_members
 from app.models.category import Category
 from app.models.challenge import (
     Challenge,
@@ -23,6 +23,7 @@ __all__ = [
     "User",
     "UserRole",
     "Team",
+    "TeamMember",
     "team_members",
     "Category",
     "Challenge",

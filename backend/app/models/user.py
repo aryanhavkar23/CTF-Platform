@@ -28,8 +28,10 @@ class User(TimeStampedModel):
     is_verified = Column(Boolean, default=False, nullable=False)
 
     # Relationships
-    teams = relationship("Team", secondary="team_members", back_populates="members")
-    captained_teams = relationship("Team", back_populates="captain")
+    teams = relationship("Team", secondary="team_members", back_populates="members", overlaps="team_memberships")
+    team_memberships = relationship("TeamMember", back_populates="user", cascade="all, delete-orphan")
+    owned_teams = relationship("Team", foreign_keys="Team.owner_id", back_populates="owner")
+    captained_teams = relationship("Team", foreign_keys="Team.captain_id", back_populates="captain", overlaps="owned_teams,owner")
     submissions = relationship("Submission", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
