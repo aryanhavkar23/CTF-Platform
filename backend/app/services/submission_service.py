@@ -119,12 +119,15 @@ class SubmissionService:
             }
 
         # 6. First solve: Atomically award points and register in solves ledger
+        hint_deductions = ScoringService.get_hint_deductions(db, user.id, challenge.id)
+        awarded_points = max(challenge.points - hint_deductions, 0)
+
         sub = Submission(
             user_id=user.id,
             challenge_id=challenge.id,
             submitted_flag_hash=submitted_hash,
             is_correct=True,
-            points_awarded=challenge.points
+            points_awarded=awarded_points
         )
         db.add(sub)
         db.flush()  # assign sub.id
@@ -134,7 +137,7 @@ class SubmissionService:
                 user_id=user.id,
                 challenge_id=challenge.id,
                 submission_id=sub.id,
-                points_awarded=challenge.points
+                points_awarded=awarded_points
             )
             db.add(solve)
             db.commit()
@@ -142,8 +145,8 @@ class SubmissionService:
             return {
                 "submission": sub,
                 "is_correct": True,
-                "points_awarded": challenge.points,
-                "message": f"Correct flag! {challenge.points} points awarded."
+                "points_awarded": awarded_points,
+                "message": f"Correct flag! {awarded_points} points awarded."
             }
         except IntegrityError:
             # Race condition: another concurrent transaction solved it at the same moment

@@ -87,6 +87,7 @@ class ChallengeHint(TimeStampedModel):
     __tablename__ = "challenge_hints"
 
     challenge_id = Column(Uuid, ForeignKey("challenges.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(150), default="Hint", nullable=False)
     content = Column(Text, nullable=False)
     point_deduction = Column(Integer, default=0, nullable=False)
     order = Column(Integer, default=1, nullable=False)
@@ -98,15 +99,33 @@ class ChallengeHint(TimeStampedModel):
 
     # Relationships
     challenge = relationship("Challenge", back_populates="hints")
+    usages = relationship("HintUsage", back_populates="hint", cascade="all, delete-orphan")
+
+    @property
+    def points_deduction(self) -> int:
+        return self.point_deduction
+
+    @points_deduction.setter
+    def points_deduction(self, val: int):
+        self.point_deduction = val
+
+    @property
+    def display_order(self) -> int:
+        return self.order
+
+    @display_order.setter
+    def display_order(self, val: int):
+        self.order = val
 
     def __repr__(self) -> str:
-        return f"<ChallengeHint order={self.order} deduction={self.point_deduction}>"
+        return f"<ChallengeHint title={self.title!r} order={self.order} deduction={self.point_deduction}>"
 
 
 class ChallengeWriteup(TimeStampedModel):
     __tablename__ = "challenge_writeups"
 
     challenge_id = Column(Uuid, ForeignKey("challenges.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    title = Column(String(150), default="Official Writeup", nullable=False)
     content = Column(Text, nullable=False)
     visibility = Column(
         SQLEnum(WriteupVisibility, native_enum=False, length=20),
@@ -118,4 +137,4 @@ class ChallengeWriteup(TimeStampedModel):
     challenge = relationship("Challenge", back_populates="writeup")
 
     def __repr__(self) -> str:
-        return f"<ChallengeWriteup visibility={self.visibility.value!r}>"
+        return f"<ChallengeWriteup title={self.title!r} visibility={self.visibility.value!r}>"

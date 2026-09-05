@@ -5,10 +5,30 @@ from sqlalchemy import func
 
 from app.models.solve import Solve
 from app.models.submission import Submission
+from app.models.hint_usage import HintUsage
 
 
 class ScoringService:
     """Authoritative scoring calculations derived from verified solves."""
+
+    @staticmethod
+    def get_hint_deductions(db: Session, user_id: UUID, challenge_id: UUID) -> int:
+        """Calculates total point deductions from hints unlocked by the user for a challenge."""
+        deductions = db.query(func.coalesce(func.sum(HintUsage.points_deducted), 0))\
+            .filter(
+                HintUsage.user_id == user_id,
+                HintUsage.challenge_id == challenge_id
+            ).scalar()
+        return int(deductions or 0)
+
+    @staticmethod
+    def has_used_hint(db: Session, user_id: UUID, hint_id: UUID) -> bool:
+        """Checks whether the user has unlocked this specific hint."""
+        return db.query(HintUsage).filter(
+            HintUsage.user_id == user_id,
+            HintUsage.hint_id == hint_id
+        ).first() is not None
+
 
     @staticmethod
     def get_user_score(db: Session, user_id: UUID) -> int:

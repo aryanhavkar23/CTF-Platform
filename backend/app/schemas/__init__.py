@@ -8,9 +8,14 @@ from app.schemas.challenge import (
     ChallengeResponse,
     ChallengeAdminResponse,
     ChallengeFileResponse,
+)
+from app.schemas.hint import (
     HintCreate,
     HintUpdate,
     HintResponse,
+    HintUsageResponse,
+)
+from app.schemas.writeup import (
     WriteupCreate,
     WriteupUpdate,
     WriteupResponse,
@@ -42,6 +47,7 @@ __all__ = [
     "HintCreate",
     "HintUpdate",
     "HintResponse",
+    "HintUsageResponse",
     "WriteupCreate",
     "WriteupUpdate",
     "WriteupResponse",

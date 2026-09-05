@@ -310,7 +310,46 @@
     .rank-gold { color: #f59e0b; font-weight: bold; font-size: 14px; }
     .rank-silver { color: #cbd5e1; font-weight: bold; font-size: 14px; }
     .rank-bronze { color: #d97706; font-weight: bold; font-size: 14px; }
-    .rank-num { color: var(--text-muted); font-family: var(--font-mono); font-weight: 600; }
+    .btn-yellow { background: var(--accent-yellow); color: #0b0f19; }
+    .hint-drawer {
+      background: #090d16;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .hint-item {
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      border: 1px solid var(--border-color);
+      background: #0d1322;
+    }
+    .hint-item.unlocked {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: rgba(16, 185, 129, 0.05);
+    }
+    .hint-item.locked {
+      border-color: rgba(245, 158, 11, 0.3);
+      background: rgba(245, 158, 11, 0.05);
+    }
+    .writeup-drawer {
+      background: #090d16;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .writeup-drawer pre {
+      background: #050811;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      margin-top: 6px;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
@@ -547,8 +586,63 @@
           </div>
           <button type="submit" class="btn-green" style="margin-top: 14px;">Publish New Challenge</button>
         </div>
-      </div>
     </form>
+
+    <!-- Hint & Writeup Authoring Tools -->
+    <div style="border-top: 1px solid var(--border-color); margin-top: 20px; padding-top: 20px;">
+      <h3 style="font-size: 13px; color: var(--accent-yellow); font-family: var(--font-mono); margin-bottom: 14px;">ATTACH HINT TO CHALLENGE</h3>
+      <form id="createHintForm" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 0;">
+        <div class="form-group">
+          <label>CHALLENGE ID</label>
+          <input type="text" id="hintChallId" required placeholder="UUID..." />
+        </div>
+        <div class="form-group">
+          <label>HINT TITLE</label>
+          <input type="text" id="hintTitle" required placeholder="e.g. Memory Analysis Clue" />
+        </div>
+        <div class="form-group">
+          <label>POINTS DEDUCTION</label>
+          <input type="number" id="hintPointsDeduction" min="0" required value="20" />
+        </div>
+        <div class="form-group">
+          <label>ORDER</label>
+          <input type="number" id="hintOrder" min="1" required value="1" />
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>HINT CONTENT</label>
+          <textarea id="hintContent" rows="2" required placeholder="Hint text revealed only upon unlock..."></textarea>
+          <button type="submit" class="btn-yellow" style="margin-top: 10px;">Create Challenge Hint</button>
+        </div>
+      </form>
+    </div>
+
+    <div style="border-top: 1px solid var(--border-color); margin-top: 20px; padding-top: 20px;">
+      <h3 style="font-size: 13px; color: var(--accent-purple); font-family: var(--font-mono); margin-bottom: 14px;">PUBLISH / UPDATE WRITEUP</h3>
+      <form id="createWriteupForm" class="grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 0;">
+        <div class="form-group">
+          <label>CHALLENGE ID</label>
+          <input type="text" id="writeupChallId" required placeholder="UUID..." />
+        </div>
+        <div class="form-group">
+          <label>WRITEUP TITLE</label>
+          <input type="text" id="writeupTitle" placeholder="e.g. Official Walkthrough" />
+        </div>
+        <div class="form-group">
+          <label>VISIBILITY</label>
+          <select id="writeupVisibility">
+            <option value="after_solve">after_solve (Visible to solvers)</option>
+            <option value="public">public (Visible to all)</option>
+            <option value="after_event">after_event (Event conclusion)</option>
+            <option value="hidden">hidden (Admin/Mod only)</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>WRITEUP CONTENT (MARKDOWN/TEXT)</label>
+          <textarea id="writeupContent" rows="3" required placeholder="Detailed solution walkthrough, commands, and flag explanation..."></textarea>
+          <button type="submit" class="btn-purple" style="margin-top: 10px;">Save Challenge Writeup</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Live Response Inspector -->
@@ -641,7 +735,7 @@
         if (res.ok) {
           const data = await res.json();
           document.getElementById('scoreSolveCount').textContent = data.solves_count;
-          document.getElementById('scoreTotalPoints').textContent = data.total_score;
+          document.getElementById('scoreTotalPoints').textContent = (data.total_points !== undefined ? data.total_points : data.total_score) ?? 0;
         }
 
         // Also fetch user leaderboard ranking
@@ -844,11 +938,15 @@
                 </div>
               </div>
 
-              <!-- Flag Submission Form -->
+              <!-- Action Buttons & Details -->
               <div style="border-top:1px solid #1a2234; padding-top:10px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                   <span class="points-tag">${c.points} PTS</span>
-                  <button class="btn-outline" style="padding:4px 8px; font-size:11px;" onclick="viewChallengeDetails('${c.id}')">Details</button>
+                  <div style="display:flex; gap:6px;">
+                    <button class="btn-outline" style="padding:4px 8px; font-size:11px;" onclick="toggleHints('${c.id}')">Hints</button>
+                    <button class="btn-outline" style="padding:4px 8px; font-size:11px;" onclick="viewWriteup('${c.id}')">Writeup</button>
+                    <button class="btn-outline" style="padding:4px 8px; font-size:11px;" onclick="viewChallengeDetails('${c.id}')">Details</button>
+                  </div>
                 </div>
                 ${isSolved ? `
                   <div style="color:var(--accent-green); font-size:12px; font-family:var(--font-mono); font-weight:600; text-align:center; padding:6px; background:rgba(16,185,129,0.1); border-radius:4px;">
@@ -861,6 +959,8 @@
                   </form>
                   <div id="feedback-${c.id}" style="font-size:11px; margin-top:4px; font-family:var(--font-mono);"></div>
                 `}
+                <div id="hints-drawer-${c.id}" class="hint-drawer" style="display:none;"></div>
+                <div id="writeup-drawer-${c.id}" class="writeup-drawer" style="display:none;"></div>
               </div>
             </div>
           `;
@@ -930,6 +1030,122 @@
       const res = await fetch(`${API_BASE}/api/challenges/${id}`, { headers });
       const data = await res.json();
       logResponse(res.status, 'GET', `/api/challenges/${id}`, data);
+    };
+
+    window.toggleHints = async function(challengeId) {
+      const drawer = document.getElementById(`hints-drawer-${challengeId}`);
+      if (!drawer) return;
+      if (drawer.style.display !== 'none') {
+        drawer.style.display = 'none';
+        return;
+      }
+      drawer.style.display = 'block';
+      drawer.innerHTML = '<div style="color:var(--text-muted); font-size:11px;">Loading hints...</div>';
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(`${API_BASE}/api/challenges/${challengeId}/hints`, { headers });
+        const hints = await res.json();
+        logResponse(res.status, 'GET', `/api/challenges/${challengeId}/hints`, hints);
+        if (!res.ok || !hints.length) {
+          drawer.innerHTML = `<div style="color:var(--text-muted); font-size:11px;">${hints.detail || 'No hints available for this challenge.'}</div>`;
+          return;
+        }
+        const isSolved = solvedChallengeIds.has(challengeId);
+        drawer.innerHTML = `
+          <div style="font-weight:600; color:var(--accent-yellow); margin-bottom:6px; font-size:11px; font-family:var(--font-mono);">AVAILABLE HINTS</div>
+          ${hints.map(h => {
+            const isUnlocked = h.is_used || (h.content !== null && h.content !== undefined);
+            const pts = h.points_deduction !== undefined ? h.points_deduction : (h.point_deduction || 0);
+            return `
+              <div class="hint-item ${isUnlocked ? 'unlocked' : 'locked'}">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <strong>${h.title}</strong>
+                  <span style="font-family:var(--font-mono); color:var(--accent-yellow); font-size:11px;">-${pts} PTS</span>
+                </div>
+                ${isUnlocked ? `
+                  <div style="margin-top:6px; color:var(--accent-green); background:#050811; padding:6px 8px; border-radius:4px; font-family:var(--font-mono); font-size:11px;">
+                    💡 ${h.content}
+                  </div>
+                ` : `
+                  <div style="margin-top:6px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:var(--text-muted); font-size:11px;">Hint is locked</span>
+                    ${isSolved ? `
+                      <span style="color:var(--text-muted); font-size:10px;">(Already solved)</span>
+                    ` : `
+                      <button class="btn-yellow" style="padding:2px 8px; font-size:10px;" onclick="unlockHint('${challengeId}', '${h.id}', ${pts})">Unlock (-${pts} pts)</button>
+                    `}
+                  </div>
+                `}
+              </div>
+            `;
+          }).join('')}
+        `;
+      } catch (e) {
+        drawer.innerHTML = `<div style="color:var(--accent-red); font-size:11px;">Failed to load hints: ${e.message}</div>`;
+      }
+    };
+
+    window.unlockHint = async function(challengeId, hintId, points) {
+      if (!currentToken) {
+        alert('Please log in to unlock hints.');
+        return;
+      }
+      if (!confirm(`Unlocking this hint will deduct ${points} points upon solving the challenge. Proceed?`)) {
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/challenges/${challengeId}/hints/${hintId}/use`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/challenges/${challengeId}/hints/${hintId}/use`, data);
+        if (res.ok) {
+          const drawer = document.getElementById(`hints-drawer-${challengeId}`);
+          if (drawer) {
+            drawer.style.display = 'none';
+            toggleHints(challengeId);
+          }
+        } else {
+          alert(data.detail || 'Could not unlock hint.');
+        }
+      } catch (e) {
+        alert('Error unlocking hint: ' + e.message);
+      }
+    };
+
+    window.viewWriteup = async function(challengeId) {
+      const drawer = document.getElementById(`writeup-drawer-${challengeId}`);
+      if (!drawer) return;
+      if (drawer.style.display !== 'none') {
+        drawer.style.display = 'none';
+        return;
+      }
+      drawer.style.display = 'block';
+      drawer.innerHTML = '<div style="color:var(--text-muted); font-size:11px;">Fetching writeup...</div>';
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(`${API_BASE}/api/challenges/${challengeId}/writeup`, { headers });
+        const data = await res.json();
+        logResponse(res.status, 'GET', `/api/challenges/${challengeId}/writeup`, data);
+        if (res.ok) {
+          drawer.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <strong style="color:var(--accent-purple); font-family:var(--font-mono); font-size:11px;">OFFICIAL WRITEUP</strong>
+              <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono); text-transform:uppercase;">${data.visibility}</span>
+            </div>
+            ${data.title ? `<div style="font-weight:600; margin-bottom:4px; font-size:12px;">${data.title}</div>` : ''}
+            <pre style="margin:0; max-height:200px;">${data.content}</pre>
+          `;
+        } else {
+          drawer.innerHTML = `
+            <div style="color:var(--accent-red); font-weight:600; font-size:11px;">Access Restricted</div>
+            <div style="color:var(--text-muted); font-size:11px; margin-top:4px;">${data.detail || 'Writeup is not accessible.'}</div>
+          `;
+        }
+      } catch (e) {
+        drawer.innerHTML = `<div style="color:var(--accent-red); font-size:11px;">Failed to fetch writeup: ${e.message}</div>`;
+      }
     };
 
     // Register Handler
@@ -1033,6 +1249,65 @@
       if (res.ok) {
         document.getElementById('createChallengeForm').reset();
         loadChallenges();
+      }
+    });
+
+    // Create Hint Handler
+    document.getElementById('createHintForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) {
+        alert('Please log in with admin/moderator token.');
+        return;
+      }
+      const challId = document.getElementById('hintChallId').value.trim();
+      const payload = {
+        title: document.getElementById('hintTitle').value.trim(),
+        points_deduction: parseInt(document.getElementById('hintPointsDeduction').value, 10),
+        display_order: parseInt(document.getElementById('hintOrder').value, 10),
+        content: document.getElementById('hintContent').value.trim()
+      };
+      const res = await fetch(`${API_BASE}/api/challenges/${challId}/hints`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      logResponse(res.status, 'POST', `/api/challenges/${challId}/hints`, data);
+      if (res.ok) {
+        document.getElementById('createHintForm').reset();
+        alert('Hint created successfully!');
+      }
+    });
+
+    // Create / Update Writeup Handler
+    document.getElementById('createWriteupForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) {
+        alert('Please log in with admin/moderator token.');
+        return;
+      }
+      const challId = document.getElementById('writeupChallId').value.trim();
+      const payload = {
+        title: document.getElementById('writeupTitle').value.trim() || null,
+        visibility: document.getElementById('writeupVisibility').value,
+        content: document.getElementById('writeupContent').value.trim()
+      };
+      const res = await fetch(`${API_BASE}/api/challenges/${challId}/writeups`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      logResponse(res.status, 'POST', `/api/challenges/${challId}/writeups`, data);
+      if (res.ok) {
+        document.getElementById('createWriteupForm').reset();
+        alert('Writeup saved successfully!');
       }
     });
 

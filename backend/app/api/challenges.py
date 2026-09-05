@@ -13,14 +13,22 @@ from app.schemas.challenge import (
     ChallengeResponse,
     ChallengeAdminResponse,
     ChallengeFileResponse,
+)
+from app.schemas.hint import (
     HintCreate,
     HintUpdate,
     HintResponse,
+    HintUsageResponse,
+)
+from app.schemas.writeup import (
     WriteupCreate,
+    WriteupUpdate,
     WriteupResponse,
 )
 from app.schemas.submission import ChallengeStatusResponse
 from app.services.challenge_service import ChallengeService
+from app.services.hint_service import HintService
+from app.services.writeup_service import WriteupService
 from app.services.scoring_service import ScoringService
 from app.services.storage_service import storage_service
 from app.api.deps import require_role, get_current_user_optional, get_current_active_user
@@ -130,10 +138,32 @@ def add_hint(
     current_user: User = Depends(require_role(UserRole.MODERATOR, UserRole.ADMIN)),
 ):
     """Adds a hint to a challenge. Restricted to moderators and administrators."""
-    hint = ChallengeService.add_hint(db, challenge_id, request)
+    hint = HintService.create_hint(db, challenge_id, request)
     return HintResponse.model_validate(hint)
 
 
+@router.get("/{challenge_id}/hints", response_model=List[HintResponse], status_code=status.HTTP_200_OK)
+def list_hints(
+    challenge_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Lists hints for a challenge. Content is hidden from students unless unlocked."""
+    return HintService.get_hints_for_challenge(db, challenge_id, current_user)
+
+
+@router.get("/{challenge_id}/hints/{hint_id}", response_model=HintResponse, status_code=status.HTTP_200_OK)
+def get_hint(
+    challenge_id: UUID,
+    hint_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Retrieves a single hint. Content is hidden from students unless unlocked."""
+    return HintService.get_hint(db, challenge_id, hint_id, current_user)
+
+
+@router.put("/{challenge_id}/hints/{hint_id}", response_model=HintResponse, status_code=status.HTTP_200_OK)
 @router.patch("/{challenge_id}/hints/{hint_id}", response_model=HintResponse, status_code=status.HTTP_200_OK)
 def update_hint(
     challenge_id: UUID,
@@ -143,7 +173,7 @@ def update_hint(
     current_user: User = Depends(require_role(UserRole.MODERATOR, UserRole.ADMIN)),
 ):
     """Updates a hint. Restricted to moderators and administrators."""
-    hint = ChallengeService.update_hint(db, hint_id, request)
+    hint = HintService.update_hint(db, challenge_id, hint_id, request)
     return HintResponse.model_validate(hint)
 
 
@@ -155,12 +185,24 @@ def delete_hint(
     current_user: User = Depends(require_role(UserRole.MODERATOR, UserRole.ADMIN)),
 ):
     """Deletes a hint. Restricted to moderators and administrators."""
-    ChallengeService.delete_hint(db, hint_id)
+    HintService.delete_hint(db, challenge_id, hint_id)
     return {"status": "deleted", "hint_id": str(hint_id)}
+
+
+@router.post("/{challenge_id}/hints/{hint_id}/use", response_model=HintUsageResponse, status_code=status.HTTP_200_OK)
+def use_hint(
+    challenge_id: UUID,
+    hint_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Student unlocks a hint. Records point deduction and reveals hint content."""
+    return HintService.use_hint(db, challenge_id, hint_id, current_user)
 
 
 # Writeups Management
 
+@router.post("/{challenge_id}/writeups", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
 @router.post("/{challenge_id}/writeup", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
 def set_writeup(
     challenge_id: UUID,
@@ -169,20 +211,59 @@ def set_writeup(
     current_user: User = Depends(require_role(UserRole.MODERATOR, UserRole.ADMIN)),
 ):
     """Creates or updates a challenge writeup. Restricted to moderators and administrators."""
-    writeup = ChallengeService.create_or_update_writeup(db, challenge_id, request)
+    writeup = WriteupService.create_or_update_writeup(db, challenge_id, request)
     return WriteupResponse.model_validate(writeup)
 
 
-@router.get("/{challenge_id}/writeup", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
-def get_writeup(
+@router.get("/{challenge_id}/writeups", response_model=List[WriteupResponse], status_code=status.HTTP_200_OK)
+def list_writeups(
     challenge_id: UUID,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
-    """Retrieves writeup according to visibility rules. Non-public writeups reject students with 403."""
-    is_admin_or_mod = current_user is not None and current_user.role in [UserRole.MODERATOR, UserRole.ADMIN]
-    writeup = ChallengeService.get_writeup(db, challenge_id, is_admin_or_mod=is_admin_or_mod)
+    """Retrieves writeups for a challenge, enforcing visibility rules."""
+    writeups = WriteupService.get_writeups_for_challenge(db, challenge_id, current_user)
+    return [WriteupResponse.model_validate(w) for w in writeups]
+
+
+@router.get("/{challenge_id}/writeup", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
+@router.get("/{challenge_id}/writeups/{writeup_id}", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
+def get_writeup(
+    challenge_id: UUID,
+    writeup_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Retrieves writeup according to visibility rules. Locked writeups reject students with 403."""
+    writeup = WriteupService.get_writeup(db, challenge_id, user=current_user, writeup_id=writeup_id)
     return WriteupResponse.model_validate(writeup)
+
+
+@router.put("/{challenge_id}/writeups/{writeup_id}", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
+@router.patch("/{challenge_id}/writeups/{writeup_id}", response_model=WriteupResponse, status_code=status.HTTP_200_OK)
+def update_writeup(
+    challenge_id: UUID,
+    writeup_id: UUID,
+    request: WriteupUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.MODERATOR, UserRole.ADMIN)),
+):
+    """Updates a challenge writeup. Restricted to moderators and administrators."""
+    writeup = WriteupService.update_writeup(db, challenge_id, writeup_id, request)
+    return WriteupResponse.model_validate(writeup)
+
+
+@router.delete("/{challenge_id}/writeups/{writeup_id}", status_code=status.HTTP_200_OK)
+@router.delete("/{challenge_id}/writeup", status_code=status.HTTP_200_OK)
+def delete_writeup(
+    challenge_id: UUID,
+    writeup_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.MODERATOR, UserRole.ADMIN)),
+):
+    """Deletes a challenge writeup. Restricted to moderators and administrators."""
+    WriteupService.delete_writeup(db, challenge_id, writeup_id)
+    return {"status": "deleted"}
 
 
 # Challenge Files
