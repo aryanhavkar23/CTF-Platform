@@ -12,6 +12,10 @@ from app.api.submissions import router as submissions_router
 from app.api.leaderboard import router as leaderboard_router
 from app.api.teams import router as teams_router
 from app.api.events import router as events_router
+from app.api.profile import router as profile_router
+from app.api.badges import router as badges_router
+from app.api.discussions import router as discussions_router
+from app.api.notifications import router as notifications_router
 
 app = FastAPI(
     title="College OWASP CTF Platform API",
@@ -38,6 +42,10 @@ app.include_router(submissions_router)
 app.include_router(leaderboard_router)
 app.include_router(teams_router, prefix="/api/teams", tags=["Teams"])
 app.include_router(events_router, prefix="/api/events", tags=["Events"])
+app.include_router(profile_router)
+app.include_router(badges_router)
+app.include_router(discussions_router)
+app.include_router(notifications_router)
 
 
 

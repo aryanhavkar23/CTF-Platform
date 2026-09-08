@@ -14,6 +14,8 @@ from app.models.challenge import Challenge
 from app.models.solve import Solve
 from app.models.user import User, UserRole
 from app.models.team import Team, TeamMember
+from app.models.activity import ActivityType
+from app.services.activity_service import ActivityService
 from app.schemas.event import (
     EventCreate,
     EventUpdate,
@@ -474,6 +476,39 @@ class EventService:
             db.add(registration)
             db.commit()
             db.refresh(registration)
+
+            ActivityService.record_activity(
+                db=db,
+                user_id=user.id,
+                activity_type=ActivityType.EVENT_REGISTERED,
+                reference_id=event.id,
+                metadata={
+                    "event_id": str(event.id),
+                    "event_name": event.name,
+                    "type": "individual",
+                }
+            )
+
+            # Evaluate badges safely
+            try:
+                from app.services.badge_service import BadgeService
+                BadgeService.evaluate_and_award_badges(db, user.id)
+            except Exception:
+                pass
+
+            # In-app notification for event registration
+            try:
+                from app.services.notification_service import NotificationService
+                NotificationService.notify_event_registered(
+                    db=db,
+                    event_id=event.id,
+                    event_name=event.name,
+                    user_ids=[user.id],
+                    is_team=False,
+                )
+            except Exception:
+                pass
+
             return EventRegistrationResponse(
                 id=registration.id,
                 event_id=registration.event_id,
@@ -537,6 +572,44 @@ class EventService:
             db.add(registration)
             db.commit()
             db.refresh(registration)
+
+            ActivityService.record_activity(
+                db=db,
+                user_id=user.id,
+                activity_type=ActivityType.EVENT_REGISTERED,
+                reference_id=event.id,
+                metadata={
+                    "event_id": str(event.id),
+                    "event_name": event.name,
+                    "team_id": str(team.id),
+                    "team_name": team.name,
+                    "type": "team",
+                }
+            )
+
+            # Evaluate badges safely for team members
+            try:
+                from app.services.badge_service import BadgeService
+                for m_id in team_member_ids:
+                    BadgeService.evaluate_and_award_badges(db, m_id)
+            except Exception:
+                pass
+
+            # In-app notification for team event registration
+            try:
+                from app.services.notification_service import NotificationService
+                NotificationService.notify_event_registered(
+                    db=db,
+                    event_id=event.id,
+                    event_name=event.name,
+                    user_ids=team_member_ids,
+                    is_team=True,
+                    team_name=team.name,
+                    team_id=team.id,
+                )
+            except Exception:
+                pass
+
             return EventRegistrationResponse(
                 id=registration.id,
                 event_id=registration.event_id,

@@ -17,9 +17,16 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# If DATABASE_URL environment variable is provided, override config URL
+# Override config URL from environment variable or app settings
 if "DATABASE_URL" in os.environ:
     config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
+elif not config.get_main_option("sqlalchemy.url"):
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+else:
+    # If the ini file has default unreachable URL, use settings.DATABASE_URL
+    ini_url = config.get_main_option("sqlalchemy.url")
+    if "postgres:postgres@localhost" in ini_url and settings.DATABASE_URL != ini_url:
+        config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 target_metadata = Base.metadata
 

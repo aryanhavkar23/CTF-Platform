@@ -9,6 +9,8 @@ from app.models.challenge import Challenge, ChallengeHint
 from app.models.hint_usage import HintUsage
 from app.schemas.hint import HintCreate, HintUpdate, HintResponse, HintUsageResponse
 from app.services.scoring_service import ScoringService
+from app.services.activity_service import ActivityService
+from app.models.activity import ActivityType
 
 
 class HintService:
@@ -252,6 +254,19 @@ class HintService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Hint has already been unlocked by this user"
             )
+
+        # Record CTF activity for hint usage
+        ActivityService.record_activity(
+            db=db,
+            user_id=user.id,
+            activity_type=ActivityType.HINT_USED,
+            reference_id=hint.id,
+            metadata={
+                "challenge_id": str(challenge_id),
+                "hint_title": hint.title,
+                "points_deducted": usage.points_deducted,
+            }
+        )
 
         return HintUsageResponse(
             hint_id=hint.id,

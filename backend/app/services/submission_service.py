@@ -17,6 +17,8 @@ from app.models.event_registration import EventRegistration, RegistrationType
 from app.services.challenge_service import hash_flag
 from app.services.scoring_service import ScoringService
 from app.services.event_service import EventService
+from app.services.activity_service import ActivityService
+from app.models.activity import ActivityType
 
 
 class SubmissionService:
@@ -205,6 +207,41 @@ class SubmissionService:
             db.add(solve)
             db.commit()
             db.refresh(sub)
+
+            # Record CTF activity for verified solve
+            ActivityService.record_activity(
+                db=db,
+                user_id=user.id,
+                activity_type=ActivityType.CHALLENGE_SOLVED,
+                reference_id=challenge.id,
+                metadata={
+                    "challenge_title": challenge.title,
+                    "points_awarded": awarded_points,
+                    "event_id": str(event_id) if event_id else None,
+                }
+            )
+
+            # Authoritatively evaluate and award badges (isolated to protect scoring)
+            try:
+                from app.services.badge_service import BadgeService
+                BadgeService.evaluate_and_award_badges(db, user.id)
+            except Exception:
+                pass
+
+            # In-app notification for solved challenge (isolated to protect scoring)
+            try:
+                from app.services.notification_service import NotificationService
+                NotificationService.notify_challenge_solved(
+                    db=db,
+                    user_id=user.id,
+                    challenge_title=challenge.title,
+                    challenge_id=challenge.id,
+                    points_awarded=awarded_points,
+                    event_id=event_id,
+                )
+            except Exception:
+                pass
+
             return {
                 "submission": sub,
                 "is_correct": True,

@@ -17,6 +17,10 @@ from app.models.event_registration import EventRegistration, RegistrationType
 from app.models.submission import Submission
 from app.models.solve import Solve
 from app.models.hint_usage import HintUsage
+from app.models.activity import UserActivity, ActivityType
+from app.models.badge import Badge, UserBadge, CriteriaType
+from app.models.discussion import Discussion, DiscussionComment
+from app.models.notification import Notification, NotificationType
 
 __all__ = [
     "Base",
@@ -42,5 +46,14 @@ __all__ = [
     "Submission",
     "Solve",
     "HintUsage",
+    "UserActivity",
+    "ActivityType",
+    "Badge",
+    "UserBadge",
+    "CriteriaType",
+    "Discussion",
+    "DiscussionComment",
+    "Notification",
+    "NotificationType",
 ]
 

@@ -14,6 +14,8 @@ from app.schemas.team import (
     TeamDetailResponse,
     TeamMemberResponse,
 )
+from app.models.activity import ActivityType
+from app.services.activity_service import ActivityService
 
 
 class TeamService:
@@ -107,6 +109,15 @@ class TeamService:
         db.add(owner_member)
         db.commit()
         db.refresh(team)
+
+        ActivityService.record_activity(
+            db=db,
+            user_id=current_user.id,
+            activity_type=ActivityType.TEAM_CREATED,
+            reference_id=team.id,
+            metadata={"team_id": str(team.id), "team_name": team.name}
+        )
+
         return cls._to_team_response(db, team)
 
     @classmethod
@@ -237,6 +248,29 @@ class TeamService:
             existing.joined_at = utc_now()
             db.commit()
             db.refresh(existing)
+
+            ActivityService.record_activity(
+                db=db,
+                user_id=target_user.id,
+                activity_type=ActivityType.TEAM_JOINED,
+                reference_id=team.id,
+                metadata={"team_id": str(team.id), "team_name": team.name}
+            )
+
+            # In-app notification for added member
+            if target_user.id != current_user.id:
+                try:
+                    from app.services.notification_service import NotificationService
+                    NotificationService.notify_team_member_added(
+                        db=db,
+                        team_id=team.id,
+                        team_name=team.name,
+                        target_user_id=target_user.id,
+                        added_by_username=current_user.username,
+                    )
+                except Exception:
+                    pass
+
             return cls._to_member_response(existing)
         else:
             new_member = TeamMember(
@@ -248,6 +282,29 @@ class TeamService:
             db.add(new_member)
             db.commit()
             db.refresh(new_member)
+
+            ActivityService.record_activity(
+                db=db,
+                user_id=target_user.id,
+                activity_type=ActivityType.TEAM_JOINED,
+                reference_id=team.id,
+                metadata={"team_id": str(team.id), "team_name": team.name}
+            )
+
+            # In-app notification for added member
+            if target_user.id != current_user.id:
+                try:
+                    from app.services.notification_service import NotificationService
+                    NotificationService.notify_team_member_added(
+                        db=db,
+                        team_id=team.id,
+                        team_name=team.name,
+                        target_user_id=target_user.id,
+                        added_by_username=current_user.username,
+                    )
+                except Exception:
+                    pass
+
             return cls._to_member_response(new_member)
 
     @classmethod
@@ -296,6 +353,28 @@ class TeamService:
 
         db.delete(membership)
         db.commit()
+
+        ActivityService.record_activity(
+            db=db,
+            user_id=target_user_id,
+            activity_type=ActivityType.TEAM_LEFT,
+            reference_id=team.id,
+            metadata={"team_id": str(team.id), "team_name": team.name}
+        )
+
+        # In-app notification for removed member
+        if target_user_id != current_user.id:
+            try:
+                from app.services.notification_service import NotificationService
+                NotificationService.notify_team_member_removed(
+                    db=db,
+                    team_id=team.id,
+                    team_name=team.name,
+                    target_user_id=target_user_id,
+                )
+            except Exception:
+                pass
+
         return {"message": "Member successfully removed from the team."}
 
     @classmethod
@@ -324,6 +403,15 @@ class TeamService:
 
         db.delete(membership)
         db.commit()
+
+        ActivityService.record_activity(
+            db=db,
+            user_id=current_user.id,
+            activity_type=ActivityType.TEAM_LEFT,
+            reference_id=team.id,
+            metadata={"team_id": str(team.id), "team_name": team.name}
+        )
+
         return {"message": "You have left the team."}
 
     @classmethod
@@ -378,6 +466,20 @@ class TeamService:
         team.captain_id = new_owner_id
         db.commit()
         db.refresh(team)
+
+        # In-app notification for new owner
+        try:
+            from app.services.notification_service import NotificationService
+            NotificationService.notify_team_owner_transferred(
+                db=db,
+                team_id=team.id,
+                team_name=team.name,
+                new_owner_id=new_owner_id,
+                old_owner_username=current_user.username,
+            )
+        except Exception:
+            pass
+
         return cls._to_team_detail_response(db, team)
 
     @classmethod

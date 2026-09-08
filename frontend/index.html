@@ -755,6 +755,343 @@
     </div>
   </div>
 
+  <!-- Section 10: Profiles & Activity -->
+  <div class="card" id="profileSection" style="margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+      <div>
+        <h3 style="font-size:16px; font-family:var(--font-mono); color:var(--accent-cyan);">SECTION 10: USER PROFILES &amp; ACTIVITY</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">User stats, editing, CTF streak, category breakdowns, and verified activity history.</p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-outline" id="btnRefreshProfile" style="padding:4px 10px; font-size:12px;">Refresh Profile</button>
+      </div>
+    </div>
+
+    <!-- Profile Grid Layout -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-bottom:16px;">
+      <!-- Profile Card -->
+      <div id="profileDetailsCard" style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:16px;">
+        <div style="display:flex; gap:14px; align-items:center; margin-bottom:14px;">
+          <div id="profileAvatarContainer" style="width:54px; height:54px; border-radius:50%; background:#1f293d; display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--accent-cyan); overflow:hidden; border:2px solid var(--border-color);">
+            👤
+          </div>
+          <div>
+            <h4 id="profileDisplayName" style="font-size:16px; font-weight:700;">Not Logged In</h4>
+            <div id="profileUsername" style="font-size:12px; color:var(--text-muted); font-family:var(--font-mono);">@username</div>
+            <div id="profileCollege" style="font-size:11px; color:var(--accent-purple); margin-top:2px;">College: —</div>
+          </div>
+        </div>
+
+        <p id="profileBio" style="font-size:12px; color:var(--text-muted); background:#050811; padding:8px 10px; border-radius:4px; margin-bottom:14px; min-height:42px;">
+          Log in to view or update your profile bio.
+        </p>
+
+        <!-- Stats Matrix -->
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; text-align:center;">
+          <div style="background:#0d1322; padding:8px; border-radius:4px; border:1px solid var(--border-color);">
+            <div style="font-size:10px; color:var(--text-muted);">SCORE</div>
+            <div id="profilePoints" style="font-size:14px; font-weight:bold; color:var(--accent-green);">0</div>
+          </div>
+          <div style="background:#0d1322; padding:8px; border-radius:4px; border:1px solid var(--border-color);">
+            <div style="font-size:10px; color:var(--text-muted);">GLOBAL RANK</div>
+            <div id="profileGlobalRank" style="font-size:14px; font-weight:bold; color:var(--accent-cyan);">—</div>
+          </div>
+          <div style="background:#0d1322; padding:8px; border-radius:4px; border:1px solid var(--border-color);">
+            <div style="font-size:10px; color:var(--text-muted);">COLLEGE RANK</div>
+            <div id="profileCollegeRank" style="font-size:14px; font-weight:bold; color:var(--accent-purple);">—</div>
+          </div>
+          <div style="background:#0d1322; padding:8px; border-radius:4px; border:1px solid var(--border-color);">
+            <div style="font-size:10px; color:var(--text-muted);">SOLVED</div>
+            <div id="profileSolves" style="font-size:14px; font-weight:bold; color:var(--text-main);">0</div>
+          </div>
+          <div style="background:#0d1322; padding:8px; border-radius:4px; border:1px solid var(--border-color);">
+            <div style="font-size:10px; color:var(--text-muted);">CURRENT STREAK</div>
+            <div id="profileCurrentStreak" style="font-size:14px; font-weight:bold; color:var(--accent-yellow);">0 Days</div>
+          </div>
+          <div style="background:#0d1322; padding:8px; border-radius:4px; border:1px solid var(--border-color);">
+            <div style="font-size:10px; color:var(--text-muted);">LONGEST STREAK</div>
+            <div id="profileLongestStreak" style="font-size:14px; font-weight:bold; color:var(--accent-yellow);">0 Days</div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:12px; font-size:11px; color:var(--text-muted);">
+          <span>Team: <strong id="profileTeamName" style="color:var(--text-main);">None</strong></span>
+          <span>Events: <strong id="profileEventsCount" style="color:var(--text-main);">0</strong></span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px; color:var(--text-muted);">
+          <span>Badges: <strong id="profileBadgesCount" style="color:var(--accent-yellow);">0</strong></span>
+        </div>
+        <div id="profileRecentBadges" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;"></div>
+      </div>
+
+      <!-- Profile Edit Card -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:16px;">
+        <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:12px;">EDIT PROFILE</h4>
+        <form id="editProfileForm" style="display:flex; flex-direction:column; gap:10px;">
+          <div>
+            <label>DISPLAY NAME</label>
+            <input type="text" id="editProfileName" placeholder="Full name or handle" maxlength="100" />
+          </div>
+          <div>
+            <label>COLLEGE / INSTITUTION</label>
+            <input type="text" id="editProfileCollege" placeholder="e.g. OWASP Tech" maxlength="150" />
+          </div>
+          <div>
+            <label>BIO (MAX 500 CHARACTERS)</label>
+            <textarea id="editProfileBio" rows="2" placeholder="Tell other CTF players about your focus..." maxlength="500"></textarea>
+          </div>
+          <div>
+            <label>AVATAR URL (OPTIONAL)</label>
+            <input type="url" id="editProfileAvatar" placeholder="https://example.com/avatar.png" maxlength="512" />
+          </div>
+          <button type="submit" class="btn-green" style="padding:6px 14px; font-size:12px; align-self:flex-start;">Save Profile</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Category Stats & Solved History Row -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-bottom:16px;">
+      <!-- Category Breakdown -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <h4 style="font-size:12px; color:var(--accent-purple); font-family:var(--font-mono); margin-bottom:10px;">CATEGORY PROFICIENCY</h4>
+        <div id="profileCategoryStats" style="display:flex; flex-direction:column; gap:6px;">
+          <div style="color:var(--text-muted); font-size:12px;">No category statistics available.</div>
+        </div>
+      </div>
+
+      <!-- Solved Challenges -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <h4 style="font-size:12px; color:var(--accent-green); font-family:var(--font-mono); margin-bottom:10px;">SOLVED CHALLENGE HISTORY</h4>
+        <div id="profileSolvedChallenges" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+          <div style="color:var(--text-muted); font-size:12px;">No solved challenges yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Feed & Heatmap Section -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+      <!-- Activity Feed -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono);">ACTIVITY FEED</h4>
+          <div style="display:flex; gap:6px;">
+            <button class="btn-outline" id="btnActPrev" style="padding:2px 8px; font-size:10px;">&laquo; Prev</button>
+            <span id="actPageIndicator" style="font-size:10px; color:var(--text-muted); align-self:center;">Page 1</span>
+            <button class="btn-outline" id="btnActNext" style="padding:2px 8px; font-size:10px;">Next &raquo;</button>
+          </div>
+        </div>
+        <div id="profileActivityList" style="max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;">
+          <div style="color:var(--text-muted); font-size:12px;">No activity recorded yet.</div>
+        </div>
+      </div>
+
+      <!-- Heatmap Summary Grid -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h4 style="font-size:12px; color:var(--accent-yellow); font-family:var(--font-mono);">RECENT ACTIVITY HEATMAP (PAST 30 DAYS)</h4>
+          <span id="heatmapActiveCount" style="font-size:10px; color:var(--accent-green); font-family:var(--font-mono);">0 Total Actions</span>
+        </div>
+        <div id="profileHeatmapGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(28px, 1fr)); gap:4px; max-height:240px; overflow-y:auto; padding:4px;">
+          <div style="color:var(--text-muted); font-size:12px;">Loading heatmap...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Public Profile Inspector -->
+    <div style="background:#0d1322; border:1px solid var(--border-color); border-radius:6px; padding:12px; margin-top:16px; display:flex; gap:10px; align-items:center;">
+      <span style="font-size:12px; font-family:var(--font-mono); color:var(--text-muted); white-space:nowrap;">INSPECT PUBLIC PROFILE:</span>
+      <input type="text" id="inspectUserUuid" placeholder="Enter User UUID to view public profile..." style="flex:1; padding:6px 10px; font-size:12px;" />
+      <button class="btn-outline" id="btnInspectPublicUser" style="padding:6px 14px; font-size:12px;">Inspect</button>
+    </div>
+  </div>
+
+  <!-- Section 11: Badges & Achievements -->
+  <div class="card" id="badgesSection" style="margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+      <div>
+        <h3 style="font-size:16px; font-family:var(--font-mono); color:var(--accent-yellow);">SECTION 11: BADGES &amp; ACHIEVEMENTS</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">Milestone achievements, unlock criteria, and authoritative progress tracking.</p>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-outline" id="btnRefreshBadges" style="padding:4px 10px; font-size:12px;">Refresh Badges</button>
+      </div>
+    </div>
+
+    <!-- Admin Badge Authoring Panel (Visible to Admins) -->
+    <div id="adminBadgeCard" style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px; margin-bottom:16px;">
+      <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:10px;">ADMIN: CREATE NEW BADGE DEFINITION</h4>
+      <form id="createBadgeForm" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+        <div>
+          <label>BADGE NAME</label>
+          <input type="text" id="newBadgeName" required placeholder="e.g. Master Hacker" />
+        </div>
+        <div>
+          <label>SLUG</label>
+          <input type="text" id="newBadgeSlug" required placeholder="e.g. master-hacker" />
+        </div>
+        <div>
+          <label>ICON KEY / URL</label>
+          <input type="text" id="newBadgeIcon" required placeholder="e.g. trophy, shield, flame" value="trophy" />
+        </div>
+        <div>
+          <label>CRITERIA TYPE</label>
+          <select id="newBadgeCriteriaType" required>
+            <option value="first_solve">first_solve</option>
+            <option value="solve_count">solve_count</option>
+            <option value="points_reached">points_reached</option>
+            <option value="category_solves">category_solves</option>
+            <option value="streak_days">streak_days</option>
+            <option value="event_participation">event_participation</option>
+          </select>
+        </div>
+        <div>
+          <label>CRITERIA VALUE</label>
+          <input type="number" id="newBadgeCriteriaVal" min="0" required value="1" />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <label>DESCRIPTION</label>
+          <input type="text" id="newBadgeDesc" required placeholder="Explain how to earn this badge..." />
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <button type="submit" class="btn-green" style="padding:6px 14px; font-size:12px;">Publish Badge</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Badges Grid: Left column My Badges & Progress, Right column All Badges Catalog -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+      <!-- My Badges & Unlock Progress -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <h4 style="font-size:12px; color:var(--accent-yellow); font-family:var(--font-mono); margin-bottom:10px;">MY UNLOCK PROGRESS &amp; ACHIEVEMENTS</h4>
+        <div id="userBadgeProgressList" style="display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto;">
+          <div style="color:var(--text-muted); font-size:12px;">Log in to view your badge unlock progress.</div>
+        </div>
+      </div>
+
+      <!-- Badge Catalog -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono); margin-bottom:10px;">BADGE CATALOG</h4>
+        <div id="badgeCatalogList" style="display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto;">
+          <div style="color:var(--text-muted); font-size:12px;">Loading badges catalog...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 12: Challenge Discussions & Comments (Phase 11) -->
+  <div class="card" id="discussionsSection" style="margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid var(--border-color); padding-bottom:10px; flex-wrap:wrap; gap:10px;">
+      <div>
+        <h3 style="font-size:16px; font-family:var(--font-mono); color:var(--accent-cyan);">SECTION 12: CHALLENGE DISCUSSIONS &amp; COMMENTS</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">Discuss challenges, exchange hints safely, thread replies, and apply moderation controls.</p>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="discussionChallengeSelect" style="width:auto; padding:6px 10px; font-size:12px;">
+          <option value="">Select Challenge...</option>
+        </select>
+        <button class="btn-outline" id="btnRefreshDiscussions" style="padding:6px 12px; font-size:12px;">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Create Discussion Form -->
+    <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px; margin-bottom:16px;">
+      <h4 style="font-size:12px; color:var(--accent-green); font-family:var(--font-mono); margin-bottom:10px;">START A NEW DISCUSSION</h4>
+      <form id="createDiscussionForm" style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px;">
+          <div>
+            <label>DISCUSSION TITLE</label>
+            <input type="text" id="discTitle" required placeholder="e.g. Approach for single quote bypass?" />
+          </div>
+          <div style="display:flex; align-items:center; padding-top:20px;">
+            <label style="margin:0; display:flex; align-items:center; gap:6px; cursor:pointer; font-size:12px;">
+              <input type="checkbox" id="discSpoiler" style="width:auto;" /> ⚠️ Contains Spoilers
+            </label>
+          </div>
+        </div>
+        <div>
+          <label>CONTENT (MARKDOWN / TEXT)</label>
+          <textarea id="discContent" rows="3" required placeholder="Share your insights or hints without leaking the exact flag..."></textarea>
+        </div>
+        <button type="submit" class="btn-green" style="padding:6px 14px; font-size:12px; align-self:flex-start;">Post Discussion</button>
+      </form>
+    </div>
+
+    <!-- Discussions List and Comments Thread Layout -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+      <!-- Discussions List -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h4 style="font-size:12px; color:var(--accent-cyan); font-family:var(--font-mono);">DISCUSSIONS</h4>
+          <select id="discSortSelect" style="width:auto; padding:2px 8px; font-size:11px;">
+            <option value="newest">Newest</option>
+            <option value="oldest">Oldest</option>
+            <option value="pinned">Pinned First</option>
+          </select>
+        </div>
+        <div id="discussionsList" style="display:flex; flex-direction:column; gap:8px; max-height:480px; overflow-y:auto;">
+          <div style="color:var(--text-muted); font-size:12px;">Select a challenge above to view discussions.</div>
+        </div>
+      </div>
+
+      <!-- Active Thread / Comments View -->
+      <div style="background:#090d16; border:1px solid var(--border-color); border-radius:6px; padding:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h4 style="font-size:12px; color:var(--accent-purple); font-family:var(--font-mono);">THREAD &amp; REPLIES</h4>
+          <span id="activeThreadBadge" style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">No Thread Selected</span>
+        </div>
+        <div id="activeThreadDetails" style="margin-bottom:14px;">
+          <div style="color:var(--text-muted); font-size:12px;">Click a discussion on the left to view comments or reply.</div>
+        </div>
+
+        <!-- Add Comment / Reply Form -->
+        <div id="commentFormContainer" style="display:none; border-top:1px solid var(--border-color); padding-top:12px;">
+          <form id="postCommentForm" style="display:flex; flex-direction:column; gap:8px;">
+            <div id="replyingToIndicator" style="display:none; font-size:11px; color:var(--accent-cyan); background:#0d1322; padding:6px 10px; border-radius:4px; align-items:center; justify-content:space-between;">
+              <span id="replyingToText">Replying to comment...</span>
+              <button type="button" id="btnCancelReply" style="background:transparent; border:none; color:var(--accent-red); cursor:pointer; font-size:11px;">Cancel</button>
+            </div>
+            <div>
+              <textarea id="commentContent" rows="2" required placeholder="Write a comment or reply..."></textarea>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label style="margin:0; font-size:11px; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="commentSpoiler" style="width:auto;" /> ⚠️ Spoiler
+              </label>
+              <button type="submit" class="btn-purple" style="padding:6px 14px; font-size:12px;">Send Comment</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 13. In-App Notifications Center (Phase 12)                            -->
+  <!-- ===================================================================== -->
+  <div class="card" style="margin-bottom:24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:12px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:18px;">🔔</span>
+        <h3 style="font-size:14px; font-weight:700; letter-spacing:0.05em; color:var(--accent-cyan); font-family:var(--font-mono);">
+          13. IN-APP NOTIFICATIONS CENTER
+        </h3>
+        <span id="notifUnreadBadge" style="background:var(--accent-red); color:#fff; padding:2px 8px; border-radius:12px; font-size:11px; font-family:var(--font-mono); font-weight:700;">0 Unread</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <label style="margin:0; font-size:12px; display:flex; align-items:center; gap:6px; cursor:pointer;">
+          <input type="checkbox" id="notifFilterUnread" style="width:auto;" onchange="fetchNotifications()" /> Unread Only
+        </label>
+        <button class="btn-outline" style="padding:4px 10px; font-size:11px;" onclick="fetchNotifications()">Refresh</button>
+        <button class="btn-green" style="padding:4px 10px; font-size:11px;" onclick="markAllNotificationsRead()">Mark All Read</button>
+      </div>
+    </div>
+
+    <!-- Notification Feed -->
+    <div id="notificationsList" style="display:flex; flex-direction:column; gap:8px; max-height:400px; overflow-y:auto;">
+      <div style="color:var(--text-muted); font-size:12px; padding:12px; text-align:center;">No notifications yet. Perform actions like solving challenges, joining teams, or registering for events.</div>
+    </div>
+  </div>
+
   <!-- Live Response Inspector -->
   <div class="terminal-card">
     <div class="terminal-header">
@@ -1011,6 +1348,9 @@
         logResponse(res.status, 'GET', '/api/challenges', challenges);
 
         const container = document.getElementById('challengesList');
+        if (typeof populateDiscussionChallenges === 'function') {
+          populateDiscussionChallenges(challenges);
+        }
         if (!challenges || challenges.length === 0) {
           container.innerHTML = '<div style="color:var(--text-muted); padding:10px;">No challenges found matching filters.</div>';
           return;
@@ -2066,16 +2406,931 @@
       }
     });
 
-    document.getElementById('btnRefreshEvents')?.addEventListener('click', loadEvents);
+    // ==========================================
+    // Phase 9: Profiles & Activity
+    // ==========================================
+    let profileActPage = 1;
+    let profileActLimit = 10;
+    let profileActTotal = 0;
+
+    async function loadUserProfile(targetUserId = null) {
+      const isSelf = !targetUserId;
+      const url = isSelf ? `${API_BASE}/api/profile/me` : `${API_BASE}/api/profile/${targetUserId}`;
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+
+      try {
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        logResponse(res.status, 'GET', url, data);
+
+        if (!res.ok) {
+          if (!isSelf) alert(data.detail || 'Could not load profile.');
+          return;
+        }
+
+        // Render card
+        document.getElementById('profileDisplayName').textContent = data.name || data.username;
+        document.getElementById('profileUsername').textContent = `@${data.username}`;
+        document.getElementById('profileCollege').textContent = `College: ${data.college || 'Not set'}`;
+        document.getElementById('profileBio').textContent = data.bio || 'No bio provided yet.';
+        document.getElementById('profilePoints').textContent = data.total_points;
+        document.getElementById('profileGlobalRank').textContent = data.global_rank ? `#${data.global_rank}` : 'Unranked';
+        document.getElementById('profileCollegeRank').textContent = data.college_rank ? `#${data.college_rank}` : 'Unranked';
+        document.getElementById('profileSolves').textContent = data.challenges_solved;
+        document.getElementById('profileCurrentStreak').textContent = `${data.current_streak} Day${data.current_streak === 1 ? '' : 's'}`;
+        document.getElementById('profileLongestStreak').textContent = `${data.longest_streak} Day${data.longest_streak === 1 ? '' : 's'}`;
+        document.getElementById('profileTeamName').textContent = data.current_team || 'None';
+        document.getElementById('profileEventsCount').textContent = data.events_participated;
+        document.getElementById('profileBadgesCount').textContent = data.badges_count || 0;
+
+        const recentBadgesEl = document.getElementById('profileRecentBadges');
+        if (data.recent_badges && data.recent_badges.length) {
+          recentBadgesEl.innerHTML = data.recent_badges.map(b => `
+            <span class="status-pill" style="background:rgba(245,158,11,0.15); color:var(--accent-yellow); border:1px solid var(--accent-yellow); font-size:10px;" title="${b.description}">
+              🏆 ${b.name}
+            </span>
+          `).join('');
+        } else {
+          recentBadgesEl.innerHTML = '<span style="font-size:11px; color:var(--text-muted);">No badges earned yet.</span>';
+        }
+
+        const avatarEl = document.getElementById('profileAvatarContainer');
+        if (data.avatar_url) {
+          avatarEl.innerHTML = `<img src="${data.avatar_url}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;" onerror="this.parentElement.innerHTML='👤'" />`;
+        } else {
+          avatarEl.innerHTML = '👤';
+        }
+
+        if (isSelf) {
+          document.getElementById('editProfileName').value = data.name || '';
+          document.getElementById('editProfileCollege').value = data.college || '';
+          document.getElementById('editProfileBio').value = data.bio || '';
+          document.getElementById('editProfileAvatar').value = data.avatar_url || '';
+        }
+
+        // Load sub-resources
+        const uid = isSelf ? 'me' : targetUserId;
+        loadProfileSolves(uid);
+        loadProfileCategoryStats(uid);
+        loadProfileActivity(uid, 1);
+        loadProfileHeatmap(uid);
+
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      }
+    }
+
+    async function loadProfileSolves(uid) {
+      const container = document.getElementById('profileSolvedChallenges');
+      const url = `${API_BASE}/api/profile/${uid}/solved`;
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(url, { headers });
+        const solves = await res.json();
+        if (!res.ok || !solves.length) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No solved challenges yet.</div>';
+          return;
+        }
+        container.innerHTML = solves.map(s => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#050811; padding:6px 10px; border-radius:4px; border:1px solid var(--border-color);">
+            <div>
+              <strong style="font-size:12px;">${s.challenge_title}</strong>
+              <div style="font-size:10px; color:var(--text-muted);">${s.category} • <span class="diff-badge diff-${s.difficulty}">${s.difficulty}</span></div>
+            </div>
+            <div style="text-align:right;">
+              <span style="color:var(--accent-green); font-weight:bold; font-family:var(--font-mono); font-size:12px;">+${s.points_awarded} pts</span>
+              <div style="font-size:10px; color:var(--text-muted);">${new Date(s.solved_at).toLocaleDateString()}</div>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--accent-red); font-size:12px;">Failed to load solves.</div>';
+      }
+    }
+
+    async function loadProfileCategoryStats(uid) {
+      const container = document.getElementById('profileCategoryStats');
+      const url = `${API_BASE}/api/profile/${uid}/category-stats`;
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(url, { headers });
+        const stats = await res.json();
+        if (!res.ok || !stats.length) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No category data available.</div>';
+          return;
+        }
+        container.innerHTML = stats.map(st => `
+          <div style="background:#050811; padding:6px 10px; border-radius:4px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <strong style="font-size:12px;">${st.category}</strong>
+              <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">${st.solved_count} solved</span>
+            </div>
+            <span style="font-family:var(--font-mono); font-weight:bold; color:var(--accent-purple); font-size:12px;">${st.points_earned} PTS</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--accent-red); font-size:12px;">Failed to load category stats.</div>';
+      }
+    }
+
+    async function loadProfileActivity(uid, page = 1) {
+      profileActPage = page;
+      const container = document.getElementById('profileActivityList');
+      const url = `${API_BASE}/api/profile/${uid}/activity?page=${page}&limit=${profileActLimit}`;
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(url, { headers });
+        const data = await res.json();
+        if (!res.ok || !data.items || !data.items.length) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No activity recorded yet.</div>';
+          document.getElementById('actPageIndicator').textContent = 'Page 1 of 1';
+          return;
+        }
+        profileActTotal = data.total;
+        const totalPages = Math.ceil(data.total / profileActLimit) || 1;
+        document.getElementById('actPageIndicator').textContent = `Page ${page} of ${totalPages}`;
+
+        const iconMap = {
+          'challenge_solved': '🚩',
+          'hint_used': '💡',
+          'event_registered': '📅',
+          'team_created': '🛡️',
+          'team_joined': '🤝',
+          'team_left': '🚪'
+        };
+
+        container.innerHTML = data.items.map(act => {
+          const icon = iconMap[act.activity_type] || '⚡';
+          const time = new Date(act.created_at).toLocaleString();
+          let detail = act.activity_type.replace('_', ' ').toUpperCase();
+          if (act.metadata) {
+            if (act.metadata.challenge_title) detail += `: ${act.metadata.challenge_title}`;
+            else if (act.metadata.event_name) detail += `: ${act.metadata.event_name}`;
+            else if (act.metadata.team_name) detail += `: ${act.metadata.team_name}`;
+            else if (act.metadata.hint_title) detail += `: ${act.metadata.hint_title}`;
+          }
+          return `
+            <div style="background:#050811; padding:6px 10px; border-radius:4px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <span style="margin-right:6px;">${icon}</span>
+                <strong style="font-size:11px; font-family:var(--font-mono); color:var(--text-main);">${detail}</strong>
+              </div>
+              <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">${time}</span>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--accent-red); font-size:12px;">Failed to load activity.</div>';
+      }
+    }
+
+    async function loadProfileHeatmap(uid) {
+      const container = document.getElementById('profileHeatmapGrid');
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const toYmd = d => d.toISOString().slice(0, 10);
+
+      const url = `${API_BASE}/api/profile/${uid}/activity/heatmap?start_date=${toYmd(thirtyDaysAgo)}&end_date=${toYmd(today)}`;
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(url, { headers });
+        const days = await res.json();
+        if (!res.ok || !days.length) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No heatmap data.</div>';
+          return;
+        }
+
+        const totalActions = days.reduce((sum, d) => sum + d.count, 0);
+        document.getElementById('heatmapActiveCount').textContent = `${totalActions} Total Action${totalActions === 1 ? '' : 's'}`;
+
+        container.innerHTML = days.map(d => {
+          let bg = '#1a2234';
+          let border = '#253248';
+          if (d.count >= 4) { bg = '#10b981'; border = '#059669'; }
+          else if (d.count >= 2) { bg = '#059669'; border = '#047857'; }
+          else if (d.count >= 1) { bg = '#065f46'; border = '#047857'; }
+
+          return `
+            <div title="${d.date}: ${d.count} action${d.count === 1 ? '' : 's'}"
+                 style="background:${bg}; border:1px solid ${border}; height:28px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:9px; font-family:var(--font-mono); cursor:default;">
+              ${d.count > 0 ? d.count : ''}
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--accent-red); font-size:12px;">Failed to load heatmap.</div>';
+      }
+    }
+
+    // Profile Edit Handler
+    document.getElementById('editProfileForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) { alert('Please log in.'); return; }
+      const payload = {
+        name: document.getElementById('editProfileName').value.trim() || null,
+        college: document.getElementById('editProfileCollege').value.trim() || null,
+        bio: document.getElementById('editProfileBio').value.trim() || null,
+        avatar_url: document.getElementById('editProfileAvatar').value.trim() || null,
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/profile/me`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        logResponse(res.status, 'PUT', '/api/profile/me', data);
+        if (res.ok) {
+          alert('Profile saved successfully!');
+          loadUserProfile();
+          fetchMe();
+        } else {
+          alert(data.detail || 'Failed to update profile.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+
+    document.getElementById('btnRefreshProfile')?.addEventListener('click', () => loadUserProfile());
+    document.getElementById('btnActPrev')?.addEventListener('click', () => {
+      if (profileActPage > 1) loadProfileActivity('me', profileActPage - 1);
+    });
+    document.getElementById('btnActNext')?.addEventListener('click', () => {
+      const maxPages = Math.ceil(profileActTotal / profileActLimit);
+      if (profileActPage < maxPages) loadProfileActivity('me', profileActPage + 1);
+    });
+
+    document.getElementById('btnInspectPublicUser')?.addEventListener('click', () => {
+      const uuidVal = document.getElementById('inspectUserUuid').value.trim();
+      if (!uuidVal) { alert('Please enter a User UUID.'); return; }
+      loadUserProfile(uuidVal);
+    });
+
+    // ==========================================
+    // Phase 10: Badges & Achievements
+    // ==========================================
+    async function loadBadgesCatalog() {
+      const container = document.getElementById('badgeCatalogList');
+      const headers = currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {};
+      try {
+        const res = await fetch(`${API_BASE}/api/badges`, { headers });
+        const badges = await res.json();
+        if (!res.ok || !badges.length) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No badges defined yet.</div>';
+          return;
+        }
+        container.innerHTML = badges.map(b => `
+          <div style="background:#050811; padding:8px 12px; border-radius:4px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <strong style="font-size:12px; color:var(--accent-yellow);">🏆 ${b.name}</strong>
+                <span class="status-pill" style="font-size:10px; background:#1e293b; color:var(--accent-cyan);">${b.criteria_type} &ge; ${b.criteria_value}</span>
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${b.description}</div>
+            </div>
+            <span style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">${b.slug}</span>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--accent-red); font-size:12px;">Failed to load badges catalog.</div>';
+      }
+    }
+
+    async function loadMyBadgesAndProgress() {
+      const container = document.getElementById('userBadgeProgressList');
+      if (!currentToken) {
+        container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Log in to view your badge unlock progress.</div>';
+        return;
+      }
+      try {
+        const res = await fetch(`${API_BASE}/api/profile/me/badge-progress`, {
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const items = await res.json();
+        if (!res.ok || !items.length) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No progress metrics available.</div>';
+          return;
+        }
+        container.innerHTML = items.map(p => {
+          const barColor = p.is_unlocked ? 'var(--accent-green)' : 'var(--accent-cyan)';
+          const badgeStatus = p.is_unlocked
+            ? '<span class="status-pill status-correct">UNLOCKED</span>'
+            : `<span style="font-size:11px; font-family:var(--font-mono); color:var(--text-muted);">${p.current_value} / ${p.required_value} (${p.progress_percentage}%)</span>`;
+
+          return `
+            <div style="background:#050811; padding:8px 12px; border-radius:4px; border:1px solid ${p.is_unlocked ? 'rgba(16,185,129,0.3)' : 'var(--border-color)'};">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <strong style="font-size:12px; color:${p.is_unlocked ? 'var(--accent-green)' : 'var(--text-main)'};">
+                    ${p.is_unlocked ? '✅' : '🔒'} ${p.name}
+                  </strong>
+                  <span style="font-size:10px; color:var(--text-muted);">[${p.criteria_type}]</span>
+                </div>
+                ${badgeStatus}
+              </div>
+              <div style="background:#131d33; border-radius:3px; height:6px; overflow:hidden; margin-top:4px;">
+                <div style="background:${barColor}; width:${p.progress_percentage}%; height:100%; transition:width 0.3s ease;"></div>
+              </div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">${p.description}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        container.innerHTML = '<div style="color:var(--accent-red); font-size:12px;">Failed to load badge progress.</div>';
+      }
+    }
+
+    document.getElementById('btnRefreshBadges')?.addEventListener('click', () => {
+      loadBadgesCatalog();
+      loadMyBadgesAndProgress();
+    });
+
+    document.getElementById('createBadgeForm')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) { alert('Please log in as an administrator.'); return; }
+      const payload = {
+        name: document.getElementById('newBadgeName').value.trim(),
+        slug: document.getElementById('newBadgeSlug').value.trim(),
+        icon: document.getElementById('newBadgeIcon').value.trim(),
+        criteria_type: document.getElementById('newBadgeCriteriaType').value,
+        criteria_value: parseInt(document.getElementById('newBadgeCriteriaVal').value, 10),
+        description: document.getElementById('newBadgeDesc').value.trim(),
+        is_active: true,
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/badges`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', '/api/badges', data);
+        if (res.ok) {
+          alert('Badge published successfully!');
+          document.getElementById('createBadgeForm').reset();
+          loadBadgesCatalog();
+          loadMyBadgesAndProgress();
+        } else {
+          alert(data.detail || 'Failed to create badge.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+
+    // ==========================================
+    // Phase 11: Discussions & Comments Handlers
+    // ==========================================
+    let currentDiscussionChallengeId = '';
+    let currentActiveDiscussion = null;
+    let replyingToParentCommentId = null;
+
+    async function populateDiscussionChallenges(challenges) {
+      const select = document.getElementById('discussionChallengeSelect');
+      if (!select) return;
+      const prevVal = select.value;
+      select.innerHTML = '<option value="">Select Challenge...</option>';
+      (challenges || []).forEach(ch => {
+        const opt = document.createElement('option');
+        opt.value = ch.id;
+        opt.textContent = `[${(ch.category && ch.category.name) || 'CTF'}] ${ch.title} (${ch.points} pts)`;
+        select.appendChild(opt);
+      });
+      if (prevVal) select.value = prevVal;
+    }
+
+    document.getElementById('discussionChallengeSelect').addEventListener('change', (e) => {
+      currentDiscussionChallengeId = e.target.value;
+      currentActiveDiscussion = null;
+      document.getElementById('commentFormContainer').style.display = 'none';
+      document.getElementById('activeThreadBadge').textContent = 'No Thread Selected';
+      document.getElementById('activeThreadDetails').innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Click a discussion on the left to view comments or reply.</div>';
+      loadDiscussions();
+    });
+
+    document.getElementById('discSortSelect').addEventListener('change', () => {
+      loadDiscussions();
+    });
+
+    document.getElementById('btnRefreshDiscussions').addEventListener('click', () => {
+      loadDiscussions();
+    });
+
+    async function loadDiscussions() {
+      const listEl = document.getElementById('discussionsList');
+      if (!currentDiscussionChallengeId) {
+        listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Select a challenge above to view discussions.</div>';
+        return;
+      }
+      listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Loading discussions...</div>';
+
+      const sort = document.getElementById('discSortSelect').value;
+      try {
+        const res = await fetch(`${API_BASE}/api/challenges/${currentDiscussionChallengeId}/discussions?sort=${sort}`, {
+          headers: currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}
+        });
+        const data = await res.json();
+        logResponse(res.status, 'GET', `/api/challenges/${currentDiscussionChallengeId}/discussions`, data);
+
+        if (!res.ok) {
+          listEl.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">${data.detail || 'Error loading discussions.'}</div>`;
+          return;
+        }
+
+        if (!data.items || data.items.length === 0) {
+          listEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No discussions yet. Be the first to start one!</div>';
+          return;
+        }
+
+        listEl.innerHTML = '';
+        data.items.forEach(d => {
+          const item = document.createElement('div');
+          item.style.cssText = `background:#050811; border:1px solid ${d.is_pinned ? 'var(--accent-yellow)' : 'var(--border-color)'}; border-radius:6px; padding:10px; cursor:pointer; transition:border-color 0.2s;`;
+          
+          let badgesHtml = '';
+          if (d.is_pinned) badgesHtml += `<span style="background:rgba(245,158,11,0.2); color:var(--accent-yellow); font-size:10px; padding:2px 6px; border-radius:4px; font-family:var(--font-mono); font-weight:700;">📌 PINNED</span> `;
+          if (d.is_locked) badgesHtml += `<span style="background:rgba(239,68,68,0.2); color:var(--accent-red); font-size:10px; padding:2px 6px; border-radius:4px; font-family:var(--font-mono);">🔒 LOCKED</span> `;
+          if (d.contains_spoiler) badgesHtml += `<span style="background:rgba(139,92,246,0.2); color:var(--accent-purple); font-size:10px; padding:2px 6px; border-radius:4px; font-family:var(--font-mono);">⚠️ SPOILER</span> `;
+          if (d.is_deleted) badgesHtml += `<span style="background:rgba(148,163,184,0.2); color:var(--text-muted); font-size:10px; padding:2px 6px; border-radius:4px; font-family:var(--font-mono);">🗑️ DELETED</span> `;
+
+          const authorName = (d.user && d.user.username) || 'Anonymous';
+          const authorRole = (d.user && d.user.role) ? `<span class="role-badge role-${d.user.role}" style="font-size:9px; padding:1px 5px;">${d.user.role}</span>` : '';
+
+          item.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+              <div style="font-size:13px; font-weight:700; color:${d.is_pinned ? 'var(--accent-yellow)' : 'var(--text-main)'}; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                ${badgesHtml}
+                ${d.title}
+              </div>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; white-space:pre-wrap; max-height:48px; overflow:hidden; text-overflow:ellipsis;">
+              ${d.contains_spoiler ? '<em style="color:var(--accent-purple);">[Spoiler discussion - click to view]</em>' : d.content}
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--text-muted); font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.05); padding-top:6px;">
+              <span>By ${authorName} ${authorRole}</span>
+              <span>💬 ${d.comments_count} replies &bull; ${new Date(d.created_at).toLocaleDateString()}</span>
+            </div>
+          `;
+
+          item.addEventListener('click', () => {
+            selectDiscussion(d.id);
+          });
+
+          listEl.appendChild(item);
+        });
+      } catch (err) {
+        listEl.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function selectDiscussion(discId) {
+      const detailsEl = document.getElementById('activeThreadDetails');
+      const badgeEl = document.getElementById('activeThreadBadge');
+      detailsEl.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">Loading thread...</div>';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${discId}`, {
+          headers: currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}
+        });
+        const disc = await res.json();
+        logResponse(res.status, 'GET', `/api/discussions/${discId}`, disc);
+
+        if (!res.ok) {
+          detailsEl.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">${disc.detail || 'Error loading thread.'}</div>`;
+          return;
+        }
+
+        currentActiveDiscussion = disc;
+        badgeEl.textContent = disc.is_locked ? 'LOCKED THREAD' : 'ACTIVE THREAD';
+        badgeEl.style.color = disc.is_locked ? 'var(--accent-red)' : 'var(--accent-green)';
+
+        const isAuthor = currentUser && disc.user && (currentUser.id === disc.user.id);
+        const isMod = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator');
+
+        let actionsHtml = '';
+        if (isMod) {
+          if (disc.is_pinned) {
+            actionsHtml += `<button class="btn-outline" onclick="unpinDiscussion('${disc.id}')" style="padding:2px 8px; font-size:10px;">Unpin</button> `;
+          } else {
+            actionsHtml += `<button class="btn-outline" onclick="pinDiscussion('${disc.id}')" style="padding:2px 8px; font-size:10px;">Pin</button> `;
+          }
+          if (disc.is_locked) {
+            actionsHtml += `<button class="btn-outline" onclick="unlockDiscussion('${disc.id}')" style="padding:2px 8px; font-size:10px;">Unlock</button> `;
+          } else {
+            actionsHtml += `<button class="btn-outline" onclick="lockDiscussion('${disc.id}')" style="padding:2px 8px; font-size:10px;">Lock</button> `;
+          }
+        }
+        if ((isAuthor || isMod) && !disc.is_deleted) {
+          actionsHtml += `<button class="btn-red" onclick="deleteDiscussion('${disc.id}')" style="padding:2px 8px; font-size:10px;">Delete</button>`;
+        }
+
+        const authorName = (disc.user && disc.user.username) || 'Anonymous';
+        const authorRole = (disc.user && disc.user.role) ? `<span class="role-badge role-${disc.user.role}" style="font-size:9px; padding:1px 5px;">${disc.user.role}</span>` : '';
+
+        detailsEl.innerHTML = `
+          <div style="background:#050811; border:1px solid var(--border-color); border-radius:6px; padding:12px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+              <h3 style="font-size:15px; color:var(--text-main); font-weight:700;">${disc.title}</h3>
+              <div style="display:flex; gap:4px;">${actionsHtml}</div>
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px; font-family:var(--font-mono);">
+              Posted by <strong>${authorName}</strong> ${authorRole} &bull; ${new Date(disc.created_at).toLocaleString()}
+            </div>
+            <div style="font-size:13px; color:#cbd5e1; line-height:1.5; white-space:pre-wrap; background:#0d1322; padding:10px; border-radius:4px; border:1px solid rgba(255,255,255,0.05);">
+              ${disc.content}
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <h5 style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono); margin-bottom:8px;">COMMENTS &amp; REPLIES</h5>
+            <div id="commentsFeed" style="display:flex; flex-direction:column; gap:8px; max-height:360px; overflow-y:auto;">
+              <div style="color:var(--text-muted); font-size:11px;">Loading comments...</div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('commentFormContainer').style.display = disc.is_locked ? 'none' : 'block';
+        loadComments(disc.id);
+      } catch (err) {
+        detailsEl.innerHTML = `<div style="color:var(--accent-red); font-size:12px;">Error: ${err.message}</div>`;
+      }
+    }
+
+    async function loadComments(discId) {
+      const feedEl = document.getElementById('commentsFeed');
+      if (!feedEl) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${discId}/comments`, {
+          headers: currentToken ? { 'Authorization': `Bearer ${currentToken}` } : {}
+        });
+        const data = await res.json();
+        logResponse(res.status, 'GET', `/api/discussions/${discId}/comments`, data);
+
+        if (!res.ok || !data.items || data.items.length === 0) {
+          feedEl.innerHTML = '<div style="color:var(--text-muted); font-size:11px;">No comments yet.</div>';
+          return;
+        }
+
+        feedEl.innerHTML = '';
+        data.items.forEach(c => {
+          const isAuthor = currentUser && c.user && (currentUser.id === c.user.id);
+          const isMod = currentUser && (currentUser.role === 'admin' || currentUser.role === 'moderator');
+
+          let cActions = '';
+          if (currentToken && (!currentActiveDiscussion || !currentActiveDiscussion.is_locked) && !c.is_deleted) {
+            cActions += `<button class="btn-outline" onclick="prepareReply('${c.id}', '${(c.user && c.user.username) || 'user'}')" style="padding:1px 6px; font-size:9px;">Reply</button> `;
+          }
+          if ((isAuthor || isMod) && !c.is_deleted) {
+            cActions += `<button class="btn-red" onclick="deleteComment('${c.id}')" style="padding:1px 6px; font-size:9px;">Delete</button>`;
+          }
+
+          const cEl = document.createElement('div');
+          const isNested = !!c.parent_comment_id;
+          cEl.style.cssText = `background:${isNested ? '#0a0f1d' : '#050811'}; border:1px solid var(--border-color); border-left:${isNested ? '3px solid var(--accent-purple)' : '1px solid var(--border-color)'}; border-radius:4px; padding:8px 10px; margin-left:${isNested ? '18px' : '0'};`;
+
+          const cAuthor = (c.user && c.user.username) || 'Anonymous';
+          const cRole = (c.user && c.user.role) ? `<span class="role-badge role-${c.user.role}" style="font-size:9px; padding:1px 4px;">${c.user.role}</span>` : '';
+
+          cEl.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">
+              <span><strong>${cAuthor}</strong> ${cRole} &bull; ${new Date(c.created_at).toLocaleTimeString()}</span>
+              <div style="display:flex; gap:4px;">${cActions}</div>
+            </div>
+            <div style="font-size:12px; color:${c.is_deleted ? 'var(--text-muted)' : 'var(--text-main)'}; white-space:pre-wrap;">
+              ${c.content}
+            </div>
+          `;
+          feedEl.appendChild(cEl);
+        });
+      } catch (err) {
+        feedEl.innerHTML = `<div style="color:var(--accent-red); font-size:11px;">Error loading comments: ${err.message}</div>`;
+      }
+    }
+
+    function prepareReply(parentCommentId, username) {
+      replyingToParentCommentId = parentCommentId;
+      const ind = document.getElementById('replyingToIndicator');
+      const txt = document.getElementById('replyingToText');
+      if (ind && txt) {
+        txt.textContent = `Replying to @${username}...`;
+        ind.style.display = 'flex';
+      }
+      const textarea = document.getElementById('commentContent');
+      if (textarea) textarea.focus();
+    }
+
+    document.getElementById('btnCancelReply').addEventListener('click', () => {
+      replyingToParentCommentId = null;
+      document.getElementById('replyingToIndicator').style.display = 'none';
+    });
+
+    document.getElementById('createDiscussionForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) {
+        alert('Please log in to post a discussion.');
+        return;
+      }
+      if (!currentDiscussionChallengeId) {
+        alert('Please select a challenge first.');
+        return;
+      }
+
+      const payload = {
+        title: document.getElementById('discTitle').value.trim(),
+        content: document.getElementById('discContent').value.trim(),
+        contains_spoiler: document.getElementById('discSpoiler').checked,
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/challenges/${currentDiscussionChallengeId}/discussions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/challenges/${currentDiscussionChallengeId}/discussions`, data);
+
+        if (res.ok) {
+          alert('Discussion posted successfully!');
+          document.getElementById('createDiscussionForm').reset();
+          loadDiscussions();
+          selectDiscussion(data.id);
+        } else {
+          alert(data.detail || 'Failed to post discussion.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+
+    document.getElementById('postCommentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentToken) {
+        alert('Please log in to comment.');
+        return;
+      }
+      if (!currentActiveDiscussion) {
+        alert('No active discussion selected.');
+        return;
+      }
+
+      const payload = {
+        content: document.getElementById('commentContent').value.trim(),
+        parent_comment_id: replyingToParentCommentId || null,
+        contains_spoiler: document.getElementById('commentSpoiler').checked,
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${currentActiveDiscussion.id}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentToken}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/discussions/${currentActiveDiscussion.id}/comments`, data);
+
+        if (res.ok) {
+          document.getElementById('postCommentForm').reset();
+          replyingToParentCommentId = null;
+          document.getElementById('replyingToIndicator').style.display = 'none';
+          loadComments(currentActiveDiscussion.id);
+        } else {
+          alert(data.detail || 'Failed to post comment.');
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+
+    // Global Moderation helper functions
+    window.lockDiscussion = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${id}/lock`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/discussions/${id}/lock`, data);
+        if (res.ok) {
+          loadDiscussions();
+          selectDiscussion(id);
+        } else {
+          alert(data.detail || 'Lock failed.');
+        }
+      } catch (e) { alert(e.message); }
+    };
+
+    window.unlockDiscussion = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${id}/unlock`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/discussions/${id}/unlock`, data);
+        if (res.ok) {
+          loadDiscussions();
+          selectDiscussion(id);
+        } else {
+          alert(data.detail || 'Unlock failed.');
+        }
+      } catch (e) { alert(e.message); }
+    };
+
+    window.pinDiscussion = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${id}/pin`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/discussions/${id}/pin`, data);
+        if (res.ok) {
+          loadDiscussions();
+          selectDiscussion(id);
+        } else {
+          alert(data.detail || 'Pin failed.');
+        }
+      } catch (e) { alert(e.message); }
+    };
+
+    window.unpinDiscussion = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${id}/unpin`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/discussions/${id}/unpin`, data);
+        if (res.ok) {
+          loadDiscussions();
+          selectDiscussion(id);
+        } else {
+          alert(data.detail || 'Unpin failed.');
+        }
+      } catch (e) { alert(e.message); }
+    };
+
+    window.deleteDiscussion = async function(id) {
+      if (!confirm('Are you sure you want to delete this discussion?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/discussions/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'DELETE', `/api/discussions/${id}`, data);
+        if (res.ok) {
+          loadDiscussions();
+          selectDiscussion(id);
+        } else {
+          alert(data.detail || 'Delete failed.');
+        }
+      } catch (e) { alert(e.message); }
+    };
+
+    window.deleteComment = async function(id) {
+      if (!confirm('Are you sure you want to delete this comment?')) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/comments/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'DELETE', `/api/comments/${id}`, data);
+        if (res.ok) {
+          if (currentActiveDiscussion) loadComments(currentActiveDiscussion.id);
+        } else {
+          alert(data.detail || 'Delete comment failed.');
+        }
+      } catch (e) { alert(e.message); }
+    };
+
+    // -------------------------------------------------------------------------
+    // 13. Notifications Center
+    // -------------------------------------------------------------------------
+    window.fetchNotifications = async function() {
+      if (!currentToken) {
+        document.getElementById('notifUnreadBadge').textContent = '0 Unread';
+        document.getElementById('notificationsList').innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:12px; text-align:center;">Please log in to view notifications.</div>';
+        return;
+      }
+      const unreadOnly = document.getElementById('notifFilterUnread').checked;
+      try {
+        const [listRes, countRes] = await Promise.all([
+          fetch(`${API_BASE}/api/notifications?page=1&limit=50&unread_only=${unreadOnly}`, {
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+          }),
+          fetch(`${API_BASE}/api/notifications/unread-count`, {
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+          })
+        ]);
+
+        const listData = await listRes.json();
+        const countData = await countRes.json();
+        logResponse(listRes.status, 'GET', '/api/notifications', listData);
+
+        const unreadCount = countData.unread_count || 0;
+        const badge = document.getElementById('notifUnreadBadge');
+        badge.textContent = `${unreadCount} Unread`;
+        badge.style.background = unreadCount > 0 ? 'var(--accent-red)' : '#334155';
+
+        const container = document.getElementById('notificationsList');
+        if (!listData.items || listData.items.length === 0) {
+          container.innerHTML = '<div style="color:var(--text-muted); font-size:12px; padding:12px; text-align:center;">No notifications match your current filter.</div>';
+          return;
+        }
+
+        container.innerHTML = listData.items.map(n => {
+          const typeBadgeColor = n.type.includes('solved') ? 'var(--accent-green)' :
+                                 n.type.includes('badge') ? 'var(--accent-yellow)' :
+                                 n.type.includes('team') ? 'var(--accent-cyan)' :
+                                 n.type.includes('event') ? 'var(--accent-purple)' : '#94a3b8';
+          const bg = n.is_read ? '#090d16' : '#131b2e';
+          const border = n.is_read ? 'var(--border-color)' : 'rgba(6,182,212,0.4)';
+          const formattedDate = new Date(n.created_at).toLocaleString();
+
+          return `
+            <div style="background:${bg}; border:1px solid ${border}; border-radius:6px; padding:10px 14px; display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+              <div style="flex:1;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                  <span style="font-size:10px; font-family:var(--font-mono); font-weight:700; color:${typeBadgeColor}; text-transform:uppercase; background:rgba(255,255,255,0.05); padding:2px 6px; border-radius:4px;">
+                    ${n.type}
+                  </span>
+                  <strong style="font-size:13px; color:#fff;">${n.title}</strong>
+                  ${!n.is_read ? '<span style="color:var(--accent-cyan); font-size:10px; font-weight:bold;">● NEW</span>' : ''}
+                </div>
+                <div style="font-size:12px; color:var(--text-main); margin-bottom:6px; line-height:1.4;">${n.message}</div>
+                <div style="font-size:10px; color:var(--text-muted); font-family:var(--font-mono);">${formattedDate}</div>
+              </div>
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                ${!n.is_read ? `
+                  <button class="btn-outline" style="padding:3px 8px; font-size:11px;" onclick="markNotificationRead('${n.id}')">✓ Read</button>
+                ` : ''}
+                <button class="btn-outline" style="padding:3px 8px; font-size:11px; color:var(--accent-red);" onclick="deleteNotification('${n.id}')">✕</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        console.error('Error fetching notifications:', e);
+      }
+    };
+
+    window.markNotificationRead = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/notifications/${id}/read`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', `/api/notifications/${id}/read`, data);
+        if (res.ok) fetchNotifications();
+      } catch (e) { alert(e.message); }
+    };
+
+    window.markAllNotificationsRead = async function() {
+      if (!currentToken) return alert('Please log in.');
+      try {
+        const res = await fetch(`${API_BASE}/api/notifications/read-all`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'POST', '/api/notifications/read-all', data);
+        if (res.ok) fetchNotifications();
+      } catch (e) { alert(e.message); }
+    };
+
+    window.deleteNotification = async function(id) {
+      try {
+        const res = await fetch(`${API_BASE}/api/notifications/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        logResponse(res.status, 'DELETE', `/api/notifications/${id}`, data);
+        if (res.ok) fetchNotifications();
+      } catch (e) { alert(e.message); }
+    };
 
     // Startup
     checkHealth();
     fetchMe();
     loadCategories().then(() => {
-      loadChallenges();
+      loadChallenges().then(challs => {
+        if (challs) populateDiscussionChallenges(challs);
+      });
       loadLeaderboard();
       loadTeams();
       loadEvents();
+      loadUserProfile();
+      loadBadgesCatalog();
+      loadMyBadgesAndProgress();
+      fetchNotifications();
     });
   </script>
 </body>

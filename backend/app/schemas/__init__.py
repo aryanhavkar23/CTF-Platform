@@ -32,6 +32,15 @@ from app.schemas.leaderboard import (
     LeaderboardResponse,
     UserRankResponse,
 )
+from app.schemas.team import (
+    TeamCreate,
+    TeamUpdate,
+    AddTeamMemberRequest,
+    TransferOwnershipRequest,
+    TeamMemberResponse,
+    TeamResponse,
+    TeamDetailResponse,
+)
 from app.schemas.event import (
     EventCreate,
     EventUpdate,
@@ -43,6 +52,43 @@ from app.schemas.event import (
     EventResponse,
     EventLeaderboardEntry,
     EventLeaderboardResponse,
+)
+from app.schemas.profile import (
+    ProfileUpdate,
+    PublicProfileResponse,
+    PrivateProfileResponse,
+    SolvedChallengeResponse,
+    ActivityResponse,
+    ActivityListResponse,
+    HeatmapDayResponse,
+    StreakResponse,
+    CategoryStatsResponse,
+)
+from app.schemas.badge import (
+    BadgeCreate,
+    BadgeUpdate,
+    BadgeResponse,
+    UserBadgeResponse,
+    BadgeProgressResponse,
+    BadgeStatsResponse,
+    BadgeUserItem,
+)
+from app.schemas.discussion import (
+    UserDiscussionAuthor,
+    DiscussionCreate,
+    DiscussionUpdate,
+    CommentCreate,
+    CommentUpdate,
+    CommentResponse,
+    DiscussionResponse,
+    DiscussionListResponse,
+    CommentListResponse,
+)
+from app.schemas.notification import (
+    NotificationResponse,
+    NotificationListResponse,
+    UnreadCountResponse,
+    MarkAllReadResponse,
 )
 
 __all__ = [
@@ -88,6 +134,35 @@ __all__ = [
     "EventResponse",
     "EventLeaderboardEntry",
     "EventLeaderboardResponse",
+    "ProfileUpdate",
+    "PublicProfileResponse",
+    "PrivateProfileResponse",
+    "SolvedChallengeResponse",
+    "ActivityResponse",
+    "ActivityListResponse",
+    "HeatmapDayResponse",
+    "StreakResponse",
+    "CategoryStatsResponse",
+    "BadgeCreate",
+    "BadgeUpdate",
+    "BadgeResponse",
+    "UserBadgeResponse",
+    "BadgeProgressResponse",
+    "BadgeStatsResponse",
+    "BadgeUserItem",
+    "UserDiscussionAuthor",
+    "DiscussionCreate",
+    "DiscussionUpdate",
+    "CommentCreate",
+    "CommentUpdate",
+    "CommentResponse",
+    "DiscussionResponse",
+    "DiscussionListResponse",
+    "CommentListResponse",
+    "NotificationResponse",
+    "NotificationListResponse",
+    "UnreadCountResponse",
+    "MarkAllReadResponse",
 ]
 
 

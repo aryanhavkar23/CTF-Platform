@@ -61,6 +61,7 @@ class Challenge(TimeStampedModel):
     files = relationship("ChallengeFile", back_populates="challenge", cascade="all, delete-orphan")
     hints = relationship("ChallengeHint", back_populates="challenge", cascade="all, delete-orphan", order_by="ChallengeHint.order")
     writeup = relationship("ChallengeWriteup", back_populates="challenge", uselist=False, cascade="all, delete-orphan")
+    discussions = relationship("Discussion", back_populates="challenge", cascade="all, delete-orphan", order_by="Discussion.created_at.desc()")
 
     def __repr__(self) -> str:
         return f"<Challenge title={self.title!r} points={self.points} difficulty={self.difficulty.value!r}>"

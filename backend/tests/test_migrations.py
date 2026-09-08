@@ -44,6 +44,12 @@ def test_alembic_upgrade_and_downgrade(tmp_path):
         "solves",
         "hint_usage",
         "event_registrations",
+        "user_activities",
+        "badges",
+        "user_badges",
+        "discussions",
+        "discussion_comments",
+        "notifications",
     }
     for table in expected_tables:
         assert table in created_tables, f"Table {table} was not created by migration"
@@ -53,6 +59,15 @@ def test_alembic_upgrade_and_downgrade(tmp_path):
 
     users_indexes = {ix["name"] for ix in inspector.get_indexes("users")}
     assert "ix_users_college" in users_indexes
+
+    activity_indexes = {ix["name"] for ix in inspector.get_indexes("user_activities")}
+    assert "ix_user_activities_created_at" in activity_indexes
+
+    badge_indexes = {ix["name"] for ix in inspector.get_indexes("badges")}
+    assert "ix_badges_slug" in badge_indexes
+
+    user_badge_indexes = {ix["name"] for ix in inspector.get_indexes("user_badges")}
+    assert "ix_user_badges_user_id" in user_badge_indexes
 
     # 2. Test downgrade to base
     command.downgrade(alembic_cfg, "base")
