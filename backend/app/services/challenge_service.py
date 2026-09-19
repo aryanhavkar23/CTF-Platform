@@ -6,10 +6,10 @@ from fastapi import HTTPException, status
 
 from app.config import settings
 from app.models.category import Category
+from app.models.base import utc_now
 from app.models.challenge import (
     Challenge,
     ChallengeDifficulty,
-    ChallengeType,
     ChallengeFile,
     ChallengeHint,
     ChallengeWriteup,
@@ -95,9 +95,8 @@ class ChallengeService:
             points=request.points,
             flag_hash=flag_hashed,
             is_active=request.is_active,
-            challenge_type=ChallengeType.LIVE if request.is_live_instance else ChallengeType.STATIC,
-            is_live_instance=request.is_live_instance,
-            docker_image=request.docker_image,
+            is_dynamic_flag=request.is_dynamic_flag,
+            external_url=request.external_url,
         )
         db.add(challenge)
         db.commit()
@@ -177,11 +176,12 @@ class ChallengeService:
             challenge.flag_hash = hash_flag(request.flag)
         if request.is_active is not None:
             challenge.is_active = request.is_active
-        if request.is_live_instance is not None:
-            challenge.is_live_instance = request.is_live_instance
-            challenge.challenge_type = ChallengeType.LIVE if request.is_live_instance else ChallengeType.STATIC
-        if request.docker_image is not None:
-            challenge.docker_image = request.docker_image
+        if request.is_dynamic_flag is not None:
+            challenge.is_dynamic_flag = request.is_dynamic_flag
+        if request.external_url is not None:
+            challenge.external_url = request.external_url
+
+        challenge.updated_at = utc_now()
 
         db.commit()
         db.refresh(challenge)

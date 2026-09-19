@@ -73,7 +73,7 @@ def get_current_user_optional(
         if not user_id_raw:
             return None
         user = AuthService.get_user_by_id(db, UUID(user_id_raw))
-        if user and user.is_active:
+        if user and user.is_active and not getattr(user, "is_banned", False):
             return user
     except Exception:
         return None
@@ -83,7 +83,12 @@ def get_current_user_optional(
 def get_current_active_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
-    """Ensures the authenticated user is currently active."""
+    """Ensures the authenticated user is currently active and not banned."""
+    if getattr(current_user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account has been suspended"
+        )
     if not current_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

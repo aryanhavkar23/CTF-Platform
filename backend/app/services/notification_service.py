@@ -279,6 +279,92 @@ class NotificationService:
             return None
 
     @classmethod
+    def notify_team_invite_request(
+        cls,
+        db: Session,
+        team_id: UUID,
+        team_name: str,
+        target_user_id: UUID,
+        invited_by_username: str,
+        college: Optional[str] = None,
+    ) -> Optional[Notification]:
+        """Triggered when an owner requests/invites an operative to join their squad."""
+        try:
+            college_str = f" ({college})" if college else ""
+            return cls.create_notification(
+                db=db,
+                user_id=target_user_id,
+                type=NotificationType.TEAM_INVITE_REQUEST.value,
+                title=f"Squad Invitation: {team_name}",
+                message=f"@{invited_by_username} invited you to join squad '{team_name}'{college_str} for collegiate CTF matches.",
+                data={
+                    "team_id": str(team_id),
+                    "team_name": team_name,
+                    "invited_by": invited_by_username,
+                    "college": college,
+                    "status": "pending",
+                },
+                event_key=f"team_invite:{team_id}:{target_user_id}",
+            )
+        except Exception as e:
+            logger.warning(f"Error in notify_team_invite_request: {e}")
+            return None
+
+    @classmethod
+    def notify_team_invite_accepted(
+        cls,
+        db: Session,
+        team_id: UUID,
+        team_name: str,
+        owner_id: UUID,
+        accepted_by_username: str,
+    ) -> Optional[Notification]:
+        """Triggered when an invited user accepts the squad invitation."""
+        try:
+            return cls.create_notification(
+                db=db,
+                user_id=owner_id,
+                type=NotificationType.TEAM_INVITE_ACCEPTED.value,
+                title=f"Squad Request Accepted! ({team_name})",
+                message=f"@{accepted_by_username} accepted your invitation to join squad '{team_name}'!",
+                data={
+                    "team_id": str(team_id),
+                    "team_name": team_name,
+                    "accepted_by": accepted_by_username,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Error in notify_team_invite_accepted: {e}")
+            return None
+
+    @classmethod
+    def notify_team_invite_declined(
+        cls,
+        db: Session,
+        team_id: UUID,
+        team_name: str,
+        owner_id: UUID,
+        declined_by_username: str,
+    ) -> Optional[Notification]:
+        """Triggered when an invited user declines the squad invitation."""
+        try:
+            return cls.create_notification(
+                db=db,
+                user_id=owner_id,
+                type=NotificationType.TEAM_INVITE_DECLINED.value,
+                title=f"Squad Request Declined",
+                message=f"@{declined_by_username} declined the invitation to join squad '{team_name}'.",
+                data={
+                    "team_id": str(team_id),
+                    "team_name": team_name,
+                    "declined_by": declined_by_username,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Error in notify_team_invite_declined: {e}")
+            return None
+
+    @classmethod
     def notify_team_member_added(
         cls,
         db: Session,

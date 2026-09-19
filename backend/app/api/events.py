@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query, status, HTTPException
+from fastapi import APIRouter, Depends, Query, status, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -22,8 +22,11 @@ from app.schemas.event import (
     EventLeaderboardResponse,
 )
 from app.schemas.submission import SubmissionCreate, SubmissionResponse
+from app.schemas.certificate import CertificateResponse
 from app.services.event_service import EventService
 from app.services.submission_service import SubmissionService
+from app.services.certificate_service import CertificateService
+from app.services.event_export_service import EventExportService
 
 router = APIRouter()
 
@@ -48,6 +51,15 @@ def list_events(
     """List all available events. Students view active events; admins/mods can include inactive."""
     events = EventService.get_events(db, include_inactive=include_inactive, user=current_user)
     return [EventService.to_event_response(e) for e in events]
+
+
+@router.get("/certificates/verify/{token}", response_model=CertificateResponse)
+def verify_certificate(
+    token: str,
+    db: Session = Depends(get_db),
+):
+    """Publicly verify the authenticity of a digital certificate token."""
+    return CertificateService.verify_certificate(db, token)
 
 
 @router.get("/{event_id_or_slug}", response_model=EventResponse, status_code=status.HTTP_200_OK)
@@ -250,7 +262,7 @@ def submit_event_flag(
 ):
     """Submit a flag candidate for an event challenge.
     
-    Enforces event live status, participant registration, rate limits, and isolated points.
+    Enforces event live/ended practice status, participant registration, rate limits, and isolated points.
     """
     result = SubmissionService.process_submission(
         db=db,
@@ -268,3 +280,86 @@ def submit_event_flag(
         message=result["message"],
         created_at=sub.created_at,
     )
+
+
+@router.post("/{event_id}/challenges/{challenge_id}/submit", response_model=SubmissionResponse, status_code=status.HTTP_200_OK)
+def submit_event_challenge_flag_alias(
+    event_id: UUID,
+    challenge_id: UUID,
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Submit a flag candidate directly to event challenge path."""
+    flag_val = data.get("flag", "")
+    result = SubmissionService.process_submission(
+        db=db,
+        user=current_user,
+        challenge_id=challenge_id,
+        submitted_flag=flag_val,
+        event_id=event_id,
+    )
+    sub = result["submission"]
+    return SubmissionResponse(
+        id=sub.id,
+        challenge_id=sub.challenge_id,
+        is_correct=result["is_correct"],
+        points_awarded=result["points_awarded"],
+        message=result["message"],
+        created_at=sub.created_at,
+    )
+
+
+# -----------------------------------------------------------------------------
+# Event Results Export & Digital Certificates
+# -----------------------------------------------------------------------------
+
+@router.get("/{event_id}/export")
+def export_event_results(
+    event_id: UUID,
+    format: str = Query("json", regex="^(json|csv)$", description="Export format: json or csv"),
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role(UserRole.ADMIN, UserRole.MODERATOR)),
+):
+    """Export complete event results, rankings, and challenge solve metrics in JSON or CSV format."""
+    if format == "csv":
+        csv_content = EventExportService.export_csv(db, event_id)
+        return Response(
+            content=csv_content,
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename=event_results_{event_id}.csv"},
+        )
+    return EventExportService.export_json(db, event_id)
+
+
+@router.get("/{event_id}/certificate", response_model=CertificateResponse)
+def get_event_certificate(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Generate or retrieve verifiable digital certificate for an event participant."""
+    return CertificateService.generate_certificate(db, event_id, current_user)
+
+
+@router.post("/{event_id}/distribute-certificates", status_code=status.HTTP_200_OK)
+def distribute_event_certificates(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role(UserRole.ADMIN, UserRole.MODERATOR)),
+):
+    """Generate and distribute digital certificates to all registered event participants and their registered emails."""
+    return CertificateService.distribute_event_certificates(db, event_id)
+
+
+@router.get("/{event_id}/audit-breakdown", status_code=status.HTTP_200_OK)
+def get_event_audit_breakdown(
+    event_id: UUID,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role(UserRole.ADMIN, UserRole.MODERATOR)),
+):
+    """Retrieve detailed post-mortem audit metrics, individual/team question breakdown, cheating history, and certificate statuses."""
+    return EventExportService.get_audit_breakdown(db, event_id)
+
+
+

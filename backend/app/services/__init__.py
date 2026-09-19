@@ -15,6 +15,9 @@ from app.services.profile_service import ProfileService
 from app.services.badge_service import BadgeService
 from app.services.discussion_service import DiscussionService
 from app.services.notification_service import NotificationService
+from app.services.analytics_service import AnalyticsService
+from app.services.anti_cheat_service import AntiCheatService
+
 
 __all__ = [
     "AuthService",
@@ -34,6 +37,8 @@ __all__ = [
     "BadgeService",
     "DiscussionService",
     "NotificationService",
+    "AnalyticsService",
+    "AntiCheatService",
 ]
 
 

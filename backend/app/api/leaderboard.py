@@ -11,6 +11,7 @@ from app.api.deps import get_current_active_user, get_current_user_optional
 router = APIRouter(prefix="/api/leaderboard", tags=["Leaderboard"])
 
 
+@router.get("", response_model=LeaderboardResponse, include_in_schema=False)
 @router.get("/global", response_model=LeaderboardResponse)
 def get_global_leaderboard(
     category: Optional[str] = Query(None, description="Optional category filter (e.g. Web Exploitation)"),
@@ -47,22 +48,15 @@ def get_college_leaderboard(
 ):
     """Returns the college-specific leaderboard.
     
-    If college parameter is omitted, uses the authenticated user's registered college.
+    If college parameter is omitted, uses the authenticated user's registered college,
+    or defaults to the primary campus node.
     """
     target_college = college
     if not target_college:
         if current_user and current_user.college and current_user.college.strip():
             target_college = current_user.college
-        elif current_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User has no registered college and no college query parameter was specified",
-            )
         else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="college query parameter is required for unauthenticated requests",
-            )
+            target_college = "PCCOE"
 
     try:
         return LeaderboardService.get_college_leaderboard(

@@ -17,29 +17,27 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override config URL from environment variable or app settings
-if "DATABASE_URL" in os.environ:
-    config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
-elif not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
-else:
-    # If the ini file has default unreachable URL, use settings.DATABASE_URL
-    ini_url = config.get_main_option("sqlalchemy.url")
-    if "postgres:postgres@localhost" in ini_url and settings.DATABASE_URL != ini_url:
-        config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Resolve database URL from environment or settings
+db_url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif db_url.startswith("postgresql://") and not db_url.startswith("postgresql+"):
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+# Set escaped URL in config for Alembic internal configparser
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
+        url=db_url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=url.startswith("sqlite"),
+        render_as_batch=db_url.startswith("sqlite"),
     )
 
     with context.begin_transaction():
@@ -48,10 +46,9 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    url = config.get_main_option("sqlalchemy.url")
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    from sqlalchemy import create_engine
+    connectable = create_engine(
+        db_url,
         poolclass=pool.NullPool,
     )
 
@@ -59,7 +56,7 @@ def run_migrations_online() -> None:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=url.startswith("sqlite"),
+            render_as_batch=db_url.startswith("sqlite"),
         )
 
         with context.begin_transaction():

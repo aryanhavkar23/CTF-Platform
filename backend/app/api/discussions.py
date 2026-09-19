@@ -1,6 +1,6 @@
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -38,6 +38,11 @@ def create_discussion(
     current_user: User = Depends(get_current_active_user),
 ):
     """Authenticated user creates a new discussion for an accessible challenge."""
+    if getattr(current_user, "is_muted", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been muted by an administrator."
+        )
     return DiscussionService.create_discussion(
         db=db,
         challenge_id=challenge_id,
@@ -210,6 +215,11 @@ def create_comment(
     current_user: User = Depends(get_current_active_user),
 ):
     """Authenticated user posts a comment or reply to an unlocked discussion."""
+    if getattr(current_user, "is_muted", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been muted by an administrator."
+        )
     return DiscussionService.create_comment(
         db=db,
         discussion_id=discussion_id,

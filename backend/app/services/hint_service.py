@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from app.models.user import User, UserRole
 from app.models.challenge import Challenge, ChallengeHint
 from app.models.hint_usage import HintUsage
+from app.models.solve import Solve
 from app.schemas.hint import HintCreate, HintUpdate, HintResponse, HintUsageResponse
 from app.services.scoring_service import ScoringService
 from app.services.activity_service import ActivityService
@@ -66,17 +67,22 @@ class HintService:
 
         hints = query.order_by(ChallengeHint.order.asc()).all()
 
+        # Check if challenge is already solved by current user
+        is_challenge_solved = False
+        if user:
+            is_challenge_solved = db.query(Solve).filter(Solve.user_id == user.id, Solve.challenge_id == challenge_id).first() is not None
+
         results = []
         for h in hints:
             used = False
             content = None
 
-            if is_admin_or_mod:
-                content = h.content
-            elif user:
+            if user:
                 used = ScoringService.has_used_hint(db, user.id, h.id)
-                if used:
+                if used or is_challenge_solved:
                     content = h.content
+                    if is_challenge_solved:
+                        used = True
 
             results.append(
                 HintResponse(

@@ -61,19 +61,22 @@ class EventService:
 
     @classmethod
     def is_registration_open(cls, event: Event) -> bool:
-        """Checks if current UTC time falls within the event's registration window."""
-        if event.status == EventStatus.CANCELLED:
+        """Checks if current UTC time falls within the event's registration window (allows upcoming & live matches)."""
+        if event.status in (EventStatus.CANCELLED, EventStatus.DRAFT):
             return False
 
         now = utc_now()
         reg_start = cls._normalize_tz(event.registration_start_at)
         reg_end = cls._normalize_tz(event.registration_end_at)
-        start_at = cls._normalize_tz(event.start_at)
+        end_at = cls._normalize_tz(event.end_at)
 
-        if reg_start and reg_end:
-            return reg_start <= now < reg_end
-        elif start_at:
-            return now < start_at
+        if reg_start and now < reg_start:
+            return False
+        if reg_end and now >= reg_end:
+            return False
+        if end_at and now >= end_at:
+            return False
+
         return True
 
     @classmethod
@@ -332,19 +335,20 @@ class EventService:
         is_admin_or_mod = user and user.role in (UserRole.ADMIN, UserRole.MODERATOR)
 
         if not is_admin_or_mod:
-            # 1. Verify event is LIVE
+            # 1. Verify event is LIVE or ENDED (Practice mode)
             current_status = cls.compute_status(event)
-            if current_status != EventStatus.LIVE:
+            if current_status not in (EventStatus.LIVE, EventStatus.ENDED):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Event challenges are only accessible when the event is LIVE (currently {current_status.value})."
+                    detail=f"Event challenges are only accessible when the event is LIVE or ENDED for practice (currently {current_status.value})."
                 )
-            # 2. Verify user is registered
-            if not user or not cls.get_user_registration(db, event_id, user.id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You must be registered for this event to access its challenges."
-                )
+            # 2. Verify user is registered if event is currently LIVE
+            if current_status == EventStatus.LIVE:
+                if not user or not cls.get_user_registration(db, event_id, user.id):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You must be registered for this event to access its challenges."
+                    )
 
         query = (
             db.query(
@@ -362,6 +366,14 @@ class EventService:
 
         records = query.order_by(event_challenges.c.display_order.asc(), Challenge.title.asc()).all()
 
+        user_solved_ids = set()
+        if user:
+            solves = db.query(Solve.challenge_id).filter(
+                Solve.user_id == user.id,
+                or_(Solve.event_id == event_id, Solve.event_id == None)
+            ).all()
+            user_solved_ids = {s[0] for s in solves}
+
         results = []
         for ch, display_order, points_override, is_active in records:
             effective_points = points_override if points_override is not None else ch.points
@@ -376,6 +388,7 @@ class EventService:
                     points=effective_points,
                     display_order=display_order,
                     is_active=is_active and ch.is_active,
+                    is_solved=ch.id in user_solved_ids,
                 )
             )
         return results
@@ -543,9 +556,9 @@ class EventService:
                     detail="Team is already registered for this event."
                 )
 
-            # Check if any active member of the team is registered individually or under another team
+            # Check if any confirmed active member of the team is registered individually or under another team
             team_member_ids = [
-                m.user_id for m in team.memberships if m.is_active
+                m.user_id for m in team.memberships if m.is_active and m.role != "requested"
             ]
             if not team_member_ids:
                 team_member_ids = [team.owner_id]

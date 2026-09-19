@@ -7,6 +7,7 @@ from app.models.challenge import (
     Challenge,
     ChallengeDifficulty,
     ChallengeType,
+    InstanceMode,
     WriteupVisibility,
     ChallengeFile,
     ChallengeHint,
@@ -21,6 +22,13 @@ from app.models.activity import UserActivity, ActivityType
 from app.models.badge import Badge, UserBadge, CriteriaType
 from app.models.discussion import Discussion, DiscussionComment
 from app.models.notification import Notification, NotificationType
+from app.models.security_event import (
+    SecurityEvent,
+    SecurityEventReview,
+    SecurityEventType,
+    SecurityEventSeverity,
+    SecurityEventStatus,
+)
 
 __all__ = [
     "Base",
@@ -34,6 +42,7 @@ __all__ = [
     "Challenge",
     "ChallengeDifficulty",
     "ChallengeType",
+    "InstanceMode",
     "WriteupVisibility",
     "ChallengeFile",
     "ChallengeHint",
@@ -55,5 +64,18 @@ __all__ = [
     "DiscussionComment",
     "Notification",
     "NotificationType",
+    "SecurityEvent",
+    "SecurityEventReview",
+    "SecurityEventType",
+    "SecurityEventSeverity",
+    "SecurityEventStatus",
+    "UserWriteup",
+    "WriteupUpvote",
+    "UserFollow",
+    "GitHubIntegration",
+    "GitHubSubmissionSync",
 ]
 
+from app.models.solution import UserWriteup, WriteupUpvote
+from app.models.follow import UserFollow
+from app.models.github_integration import GitHubIntegration, GitHubSubmissionSync

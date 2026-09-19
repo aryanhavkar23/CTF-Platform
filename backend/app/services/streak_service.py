@@ -23,10 +23,14 @@ class StreakService:
         """
         records = db.query(UserActivity.created_at)\
             .filter(UserActivity.user_id == user_id)\
-            .order_by(UserActivity.created_at.asc())\
             .all()
+        from app.models.solve import Solve
+        from app.models.submission import Submission
+        solve_records = db.query(Solve.created_at).filter(Solve.user_id == user_id).all()
+        submission_records = db.query(Submission.created_at).filter(Submission.user_id == user_id).all()
+        all_records = records + solve_records + submission_records
 
-        if not records:
+        if not all_records:
             return {
                 "current_streak": 0,
                 "longest_streak": 0,
@@ -34,7 +38,7 @@ class StreakService:
             }
 
         distinct_dates: Set[date] = set()
-        for (created_at,) in records:
+        for (created_at,) in all_records:
             if created_at is not None:
                 if created_at.tzinfo is None:
                     d = created_at.date()

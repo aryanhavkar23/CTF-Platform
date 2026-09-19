@@ -1,0 +1,22 @@
+# ==============================================================================
+# Docker Ignore for OWASP CTF Platform Backend
+# ==============================================================================
+.env
+.env.*
+!.env.example
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+tests
+.coverage
+htmlcov
+*.sqlite
+*.sqlite3
+*.db
+uploads/
+.git
+.gitignore
+.vscode
+.idea

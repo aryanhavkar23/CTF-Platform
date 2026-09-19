@@ -15,7 +15,9 @@ class User(TimeStampedModel):
 
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(255), unique=True, index=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password = Column(String(255), nullable=True)
+    oauth_provider = Column(String(50), nullable=True)
+    oauth_id = Column(String(255), nullable=True, index=True)
     role = Column(
         SQLEnum(UserRole, native_enum=False, length=20),
         default=UserRole.STUDENT,
@@ -26,10 +28,15 @@ class User(TimeStampedModel):
     bio = Column(String(500), nullable=True)
     college = Column(String(150), nullable=True, index=True)
     avatar_url = Column(String(512), nullable=True)
+    github_profile_url = Column(String(255), nullable=True)
+    github_username = Column(String(100), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    is_banned = Column(Boolean, default=False, nullable=False)
+    is_muted = Column(Boolean, default=False, nullable=False)
 
     # Relationships
+    github_integration = relationship("GitHubIntegration", back_populates="user", uselist=False, cascade="all, delete-orphan")
     teams = relationship("Team", secondary="team_members", back_populates="members", overlaps="team_memberships")
     team_memberships = relationship("TeamMember", back_populates="user", cascade="all, delete-orphan")
     owned_teams = relationship("Team", foreign_keys="Team.owner_id", back_populates="owner")

@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field, ConfigDict
-from app.models.challenge import ChallengeDifficulty, ChallengeType, WriteupVisibility
+from pydantic import BaseModel, Field, ConfigDict, HttpUrl
+from app.models.challenge import ChallengeDifficulty, WriteupVisibility
 
 
 class CategoryResponse(BaseModel):
@@ -42,10 +42,13 @@ class HintUpdate(BaseModel):
 class HintResponse(BaseModel):
     id: UUID
     challenge_id: UUID
-    content: str
-    point_deduction: int
-    order: int
-    is_active: bool
+    content: Optional[str] = None
+    points_deduction: int = Field(default=0)
+    point_deduction: int = Field(default=0)
+    order: int = Field(default=1)
+    display_order: int = Field(default=1)
+    is_active: bool = True
+    used: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -80,8 +83,12 @@ class ChallengeCreate(BaseModel):
     points: int = Field(ge=0)
     flag: str = Field(min_length=1, max_length=255, description="Plaintext flag to hash securely")
     is_active: bool = True
-    is_live_instance: bool = False
-    docker_image: Optional[str] = None
+    is_dynamic_flag: bool = False
+    external_url: Optional[str] = Field(
+        default=None,
+        max_length=512,
+        description="Optional URL to a pre-hosted live challenge environment"
+    )
 
 
 class ChallengeUpdate(BaseModel):
@@ -92,8 +99,8 @@ class ChallengeUpdate(BaseModel):
     points: Optional[int] = Field(default=None, ge=0)
     flag: Optional[str] = Field(default=None, min_length=1, max_length=255)
     is_active: Optional[bool] = None
-    is_live_instance: Optional[bool] = None
-    docker_image: Optional[str] = None
+    is_dynamic_flag: Optional[bool] = None
+    external_url: Optional[str] = Field(default=None, max_length=512)
 
 
 class ChallengeResponse(BaseModel):
@@ -105,10 +112,16 @@ class ChallengeResponse(BaseModel):
     category: Optional[CategoryResponse] = None
     difficulty: ChallengeDifficulty
     points: int
-    challenge_type: ChallengeType
-    is_live_instance: bool
+    external_url: Optional[str] = None
+    is_dynamic_flag: bool = False
     files: List[ChallengeFileResponse] = []
     hints: List[HintResponse] = []
+    is_solved: bool = False
+    solves_count: int = 0
+    points_awarded: Optional[int] = None
+    is_surrendered: bool = False
+    submitted_flag: Optional[str] = None
+    writeup_content: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -118,6 +131,6 @@ class ChallengeResponse(BaseModel):
 class ChallengeAdminResponse(ChallengeResponse):
     """Admin/Moderator challenge response including administrative fields."""
     is_active: bool
-    docker_image: Optional[str] = None
     has_writeup: bool = False
     writeup: Optional[WriteupResponse] = None
+    writeup_content: Optional[str] = None

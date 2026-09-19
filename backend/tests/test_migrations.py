@@ -50,6 +50,11 @@ def test_alembic_upgrade_and_downgrade(tmp_path):
         "discussions",
         "discussion_comments",
         "notifications",
+        "security_events",
+        "security_event_reviews",
+        "user_writeups",
+        "user_follows",
+        "github_submission_syncs",
     }
     for table in expected_tables:
         assert table in created_tables, f"Table {table} was not created by migration"
@@ -59,6 +64,7 @@ def test_alembic_upgrade_and_downgrade(tmp_path):
 
     users_indexes = {ix["name"] for ix in inspector.get_indexes("users")}
     assert "ix_users_college" in users_indexes
+    assert "ix_users_oauth_id" in users_indexes
 
     activity_indexes = {ix["name"] for ix in inspector.get_indexes("user_activities")}
     assert "ix_user_activities_created_at" in activity_indexes

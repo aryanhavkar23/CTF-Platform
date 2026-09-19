@@ -1,21 +1,30 @@
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from uuid import UUID
 from fastapi import HTTPException, status
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from app.config import settings
 from app.models.team import Team, TeamMember
 from app.models.user import User, UserRole
 from app.models.base import utc_now
+from app.models.event import Event, EventStatus
+from app.models.event_registration import EventRegistration, RegistrationType
+from app.models.solve import Solve
+from app.models.challenge import Challenge
 from app.schemas.team import (
     TeamCreate,
     TeamUpdate,
     TeamResponse,
     TeamDetailResponse,
     TeamMemberResponse,
+    UserTeamDetailResponse,
+    TeamHistoryResponse,
+    TeamEventHistoryItem,
+    TeamEventSolveItem,
 )
 from app.models.activity import ActivityType
 from app.services.activity_service import ActivityService
+from app.services.scoring_service import ScoringService
 
 
 class TeamService:
@@ -36,7 +45,13 @@ class TeamService:
     def _to_team_response(db: Session, team: Team) -> TeamResponse:
         active_count = (
             db.query(func.count(TeamMember.id))
-            .filter(TeamMember.team_id == team.id, TeamMember.is_active == True)
+            .filter(TeamMember.team_id == team.id, TeamMember.is_active == True, TeamMember.role != "requested")
+            .scalar()
+            or 0
+        )
+        total_pts = (
+            db.query(func.coalesce(func.sum(Solve.points_awarded), 0))
+            .filter(Solve.team_id == team.id)
             .scalar()
             or 0
         )
@@ -50,6 +65,9 @@ class TeamService:
             member_count=active_count,
             max_team_size=settings.MAX_TEAM_SIZE,
             is_active=team.is_active,
+            invite_code=getattr(team, "invite_code", None),
+            join_code=getattr(team, "invite_code", None),
+            total_points=int(total_pts),
             created_at=team.created_at,
             updated_at=team.updated_at,
         )
@@ -143,6 +161,326 @@ class TeamService:
         return [cls._to_team_response(db, t) for t in teams]
 
     @classmethod
+    def get_my_team(cls, db: Session, current_user: User) -> Optional[TeamDetailResponse]:
+        membership = (
+            db.query(TeamMember)
+            .join(Team, Team.id == TeamMember.team_id)
+            .filter(
+                TeamMember.user_id == current_user.id,
+                TeamMember.is_active == True,
+                Team.is_active == True,
+                TeamMember.role != "requested",
+            )
+            .first()
+        )
+        if not membership or not membership.team:
+            return None
+        return cls._to_team_detail_response(db, membership.team)
+
+    @classmethod
+    def get_my_teams(cls, db: Session, current_user: User) -> List[UserTeamDetailResponse]:
+        """Retrieve all active squads where current operative is owner, captain, or active roster member."""
+        # Find all active team memberships
+        memberships = (
+            db.query(TeamMember)
+            .join(Team, Team.id == TeamMember.team_id)
+            .filter(
+                TeamMember.user_id == current_user.id,
+                TeamMember.is_active == True,
+                Team.is_active == True,
+                TeamMember.role != "requested",
+            )
+            .all()
+        )
+
+        # Also find any teams owned or captained by the user
+        owned_teams = (
+            db.query(Team)
+            .filter(
+                or_(Team.owner_id == current_user.id, Team.captain_id == current_user.id),
+                Team.is_active == True,
+            )
+            .all()
+        )
+
+        seen_team_ids = set()
+        user_teams: List[UserTeamDetailResponse] = []
+
+        # 1. First add owned / captained teams
+        for team in owned_teams:
+            if team.id in seen_team_ids:
+                continue
+            seen_team_ids.add(team.id)
+            base = cls._to_team_detail_response(db, team)
+            events_count = (
+                db.query(func.count(func.distinct(EventRegistration.event_id)))
+                .filter(EventRegistration.team_id == team.id, EventRegistration.is_active == True)
+                .scalar() or 0
+            )
+            role = "owner" if team.owner_id == current_user.id else "captain"
+            user_teams.append(UserTeamDetailResponse(
+                **base.model_dump(),
+                my_role=role,
+                events_participated_count=int(events_count),
+            ))
+
+        # 2. Then add member teams
+        for m in memberships:
+            team = m.team
+            if not team or team.id in seen_team_ids:
+                continue
+            seen_team_ids.add(team.id)
+            base = cls._to_team_detail_response(db, team)
+            events_count = (
+                db.query(func.count(func.distinct(EventRegistration.event_id)))
+                .filter(EventRegistration.team_id == team.id, EventRegistration.is_active == True)
+                .scalar() or 0
+            )
+            role = "owner" if team.owner_id == current_user.id else ("captain" if team.captain_id == current_user.id else (m.role or "member"))
+            user_teams.append(UserTeamDetailResponse(
+                **base.model_dump(),
+                my_role=role,
+                events_participated_count=int(events_count),
+            ))
+
+        return user_teams
+
+    @classmethod
+    def get_team_history(cls, db: Session, team_id: UUID) -> TeamHistoryResponse:
+        """Retrieve complete event engagement record, scores, and rankings for a team."""
+        team = db.query(Team).filter(Team.id == team_id).first()
+        if not team:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Team with ID '{team_id}' not found."
+            )
+
+        # Active roster members
+        active_memberships = (
+            db.query(TeamMember)
+            .filter(TeamMember.team_id == team.id, TeamMember.is_active == True, TeamMember.role != "requested")
+            .order_by(TeamMember.joined_at.asc())
+            .all()
+        )
+        members = [cls._to_member_response(m) for m in active_memberships]
+
+        # Registrations and solves
+        registrations = (
+            db.query(EventRegistration)
+            .filter(EventRegistration.team_id == team.id, EventRegistration.is_active == True)
+            .all()
+        )
+        team_solves = (
+            db.query(Solve)
+            .filter(Solve.team_id == team.id)
+            .order_by(Solve.created_at.desc())
+            .all()
+        )
+
+        event_ids = set()
+        reg_by_event: Dict[UUID, EventRegistration] = {}
+        for r in registrations:
+            if r.event_id:
+                event_ids.add(r.event_id)
+                reg_by_event[r.event_id] = r
+        for s in team_solves:
+            if s.event_id:
+                event_ids.add(s.event_id)
+
+        events_list: List[TeamEventHistoryItem] = []
+
+        for eid in event_ids:
+            event = db.query(Event).filter(Event.id == eid).first()
+            if not event:
+                continue
+
+            reg = reg_by_event.get(eid)
+            e_solves = [s for s in team_solves if s.event_id == eid]
+            e_score = sum(s.points_awarded for s in e_solves)
+
+            solve_items: List[TeamEventSolveItem] = []
+            for s in e_solves:
+                ch = db.query(Challenge).filter(Challenge.id == s.challenge_id).first()
+                u = db.query(User).filter(User.id == s.user_id).first()
+                cat_name = ch.category.name if (ch and getattr(ch, "category", None) and hasattr(ch.category, "name")) else "General"
+                solve_items.append(TeamEventSolveItem(
+                    challenge_id=s.challenge_id,
+                    challenge_title=ch.title if ch else "Classified Challenge",
+                    category=cat_name,
+                    points_awarded=s.points_awarded,
+                    solver_username=u.username if u else "Operative",
+                    solved_at=s.created_at,
+                ))
+
+            # Determine rank in this event among teams
+            event_team_regs = (
+                db.query(EventRegistration)
+                .filter(
+                    EventRegistration.event_id == eid,
+                    EventRegistration.registration_type == RegistrationType.TEAM,
+                    EventRegistration.is_active == True
+                )
+                .all()
+            )
+            event_team_solves = db.query(Solve).filter(Solve.event_id == eid, Solve.team_id.isnot(None)).all()
+            participating_team_ids = set([r.team_id for r in event_team_regs if r.team_id] + [s.team_id for s in event_team_solves if s.team_id])
+            if team.id not in participating_team_ids:
+                participating_team_ids.add(team.id)
+
+            team_scoreboard = []
+            for tid in participating_team_ids:
+                t_solves = [s for s in event_team_solves if s.team_id == tid]
+                pts = sum(s.points_awarded for s in t_solves)
+                last_time = max([s.created_at for s in t_solves]) if t_solves else None
+                team_scoreboard.append({
+                    "team_id": tid,
+                    "points": pts,
+                    "last_time": last_time or event.end_at,
+                })
+
+            team_scoreboard.sort(key=lambda x: (-x["points"], x["last_time"]))
+
+            rank = None
+            for idx, entry in enumerate(team_scoreboard):
+                if entry["team_id"] == team.id:
+                    rank = idx + 1
+                    break
+
+            status_val = event.status.value if hasattr(event.status, "value") else str(event.status)
+
+            events_list.append(TeamEventHistoryItem(
+                event_id=event.id,
+                event_name=event.name,
+                event_slug=event.slug,
+                status=status_val,
+                start_at=event.start_at,
+                end_at=event.end_at,
+                score=e_score,
+                solves_count=len(e_solves),
+                rank=rank,
+                total_teams=len(team_scoreboard),
+                registered_at=reg.registered_at if reg else None,
+                solves=solve_items,
+            ))
+
+        # Sort events by start date descending
+        events_list.sort(key=lambda e: e.start_at, reverse=True)
+
+        total_pts = (
+            db.query(func.coalesce(func.sum(Solve.points_awarded), 0))
+            .filter(Solve.team_id == team.id)
+            .scalar()
+            or 0
+        )
+
+        return TeamHistoryResponse(
+            team_id=team.id,
+            team_name=team.name,
+            college=team.college,
+            description=team.description,
+            owner_username=team.owner.username if team.owner else None,
+            member_count=len(members),
+            members=members,
+            events_participated_count=len(events_list),
+            total_score=int(total_pts),
+            total_solves=len(team_solves),
+            events=events_list,
+        )
+
+    @classmethod
+    def get_my_invitations(cls, db: Session, current_user: User) -> List[Dict[str, Any]]:
+        """Retrieve pending squad invitations sent to the current user."""
+        memberships = (
+            db.query(TeamMember)
+            .join(Team, Team.id == TeamMember.team_id)
+            .filter(
+                TeamMember.user_id == current_user.id,
+                TeamMember.is_active == True,
+                TeamMember.role == "requested",
+                Team.is_active == True,
+            )
+            .all()
+        )
+        results = []
+        for m in memberships:
+            t = m.team
+            results.append({
+                "membership_id": str(m.id),
+                "team_id": str(t.id),
+                "team_name": t.name,
+                "college": t.college,
+                "owner_id": str(t.owner_id),
+                "owner_username": t.owner.username if t.owner else None,
+                "invited_at": m.joined_at,
+            })
+        return results
+
+    @classmethod
+    def search_operatives(
+        cls,
+        db: Session,
+        current_user: User,
+        query: Optional[str] = None,
+        college: Optional[str] = None,
+        strict_college: bool = False,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        q = db.query(User).filter(User.is_active == True)
+        pref_college = (college or current_user.college or "").strip()
+
+        if strict_college and pref_college:
+            q = q.filter(
+                or_(
+                    func.lower(User.college) == func.lower(pref_college),
+                    User.college.ilike(f"%{pref_college}%")
+                )
+            )
+
+        if query and query.strip():
+            term = f"%{query.strip()}%"
+            q = q.filter(
+                or_(
+                    User.username.ilike(term),
+                    User.name.ilike(term),
+                    User.college.ilike(term),
+                    User.email.ilike(term),
+                )
+            )
+        q = q.filter(User.id != current_user.id)
+        users = q.all()
+
+        # Prioritize operatives from the same college on top ("upside")
+        def sort_key(u: User):
+            is_same = False
+            if pref_college and u.college:
+                p_col = pref_college.lower()
+                u_col = u.college.lower()
+                is_same = (p_col in u_col) or (u_col in p_col)
+            # 0 for same college (top), 1 for other colleges
+            return (0 if is_same else 1, -(ScoringService.get_user_score(db, u.id) or 0), (u.username or "").lower())
+
+        users.sort(key=sort_key)
+        users = users[:limit]
+
+        return [
+            {
+                "id": str(u.id),
+                "username": u.username,
+                "name": u.name or u.username,
+                "college": u.college or "Registered Operative",
+                "is_same_college": bool(
+                    pref_college and u.college and (
+                        pref_college.lower() in u.college.lower() or u.college.lower() in pref_college.lower()
+                    )
+                ),
+                "role": u.role.value if hasattr(u.role, "value") else str(u.role),
+                "points": ScoringService.get_user_score(db, u.id),
+                "avatar_url": u.avatar_url,
+            }
+            for u in users
+        ]
+
+    @classmethod
     def get_team_by_id(cls, db: Session, team_id: UUID) -> TeamDetailResponse:
         team = db.query(Team).filter(Team.id == team_id).first()
         if not team:
@@ -176,6 +514,7 @@ class TeamService:
         team_id: UUID,
         target_user_id: Optional[UUID] = None,
         target_username: Optional[str] = None,
+        role: str = "member",
     ) -> TeamMemberResponse:
         """Add a member to the team with row-level locking to prevent exceeding MAX_TEAM_SIZE."""
         # Lock team row to prevent concurrent race condition additions
@@ -224,49 +563,47 @@ class TeamService:
             .first()
         )
         if existing and existing.is_active:
+            if role == "requested" and existing.role == "requested":
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Squad request already sent to this operative (Pending Acceptance)."
+                )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User is already an active member of this team."
             )
 
-        # Check maximum team size
+        # Check maximum team size (confirmed active members)
         active_count = (
             db.query(func.count(TeamMember.id))
-            .filter(TeamMember.team_id == team.id, TeamMember.is_active == True)
+            .filter(TeamMember.team_id == team.id, TeamMember.is_active == True, TeamMember.role != "requested")
             .scalar()
             or 0
         )
         if active_count >= settings.MAX_TEAM_SIZE:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Team has reached the maximum size of {settings.MAX_TEAM_SIZE} members."
+                detail=f"Squad has reached the maximum size of {settings.MAX_TEAM_SIZE} members."
             )
 
         if existing:
             existing.is_active = True
-            existing.role = "member"
+            existing.role = role
             existing.joined_at = utc_now()
             db.commit()
             db.refresh(existing)
 
-            ActivityService.record_activity(
-                db=db,
-                user_id=target_user.id,
-                activity_type=ActivityType.TEAM_JOINED,
-                reference_id=team.id,
-                metadata={"team_id": str(team.id), "team_name": team.name}
-            )
-
-            # In-app notification for added member
-            if target_user.id != current_user.id:
+            # In-app notification for requested member
+            if role == "requested" and target_user.id != current_user.id:
                 try:
                     from app.services.notification_service import NotificationService
-                    NotificationService.notify_team_member_added(
+                    NotificationService.notify_team_invite_request(
                         db=db,
                         team_id=team.id,
                         team_name=team.name,
                         target_user_id=target_user.id,
-                        added_by_username=current_user.username,
+                        invited_by_username=current_user.username,
+                        college=team.college,
                     )
                 except Exception:
                     pass
@@ -276,36 +613,134 @@ class TeamService:
             new_member = TeamMember(
                 team_id=team.id,
                 user_id=target_user.id,
-                role="member",
+                role=role,
                 is_active=True,
             )
             db.add(new_member)
             db.commit()
             db.refresh(new_member)
 
-            ActivityService.record_activity(
-                db=db,
-                user_id=target_user.id,
-                activity_type=ActivityType.TEAM_JOINED,
-                reference_id=team.id,
-                metadata={"team_id": str(team.id), "team_name": team.name}
-            )
-
-            # In-app notification for added member
-            if target_user.id != current_user.id:
+            # In-app notification for requested member
+            if role == "requested" and target_user.id != current_user.id:
                 try:
                     from app.services.notification_service import NotificationService
-                    NotificationService.notify_team_member_added(
+                    NotificationService.notify_team_invite_request(
                         db=db,
                         team_id=team.id,
                         team_name=team.name,
                         target_user_id=target_user.id,
-                        added_by_username=current_user.username,
+                        invited_by_username=current_user.username,
+                        college=team.college,
                     )
                 except Exception:
                     pass
 
             return cls._to_member_response(new_member)
+
+    @classmethod
+    def accept_team_request(
+        cls,
+        db: Session,
+        current_user: User,
+        team_id: UUID,
+        target_user_id: Optional[UUID] = None,
+    ) -> TeamMemberResponse:
+        """Accept a squad invitation/request so operative becomes full active member."""
+        team = db.query(Team).filter(Team.id == team_id).first()
+        if not team:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found.")
+
+        user_id_to_accept = target_user_id if (target_user_id and (team.owner_id == current_user.id or current_user.role == UserRole.ADMIN)) else current_user.id
+
+        membership = (
+            db.query(TeamMember)
+            .filter(TeamMember.team_id == team.id, TeamMember.user_id == user_id_to_accept, TeamMember.is_active == True)
+            .first()
+        )
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Pending squad request not found."
+            )
+
+        active_count = (
+            db.query(func.count(TeamMember.id))
+            .filter(TeamMember.team_id == team.id, TeamMember.is_active == True, TeamMember.role != "requested")
+            .scalar()
+            or 0
+        )
+        if active_count >= settings.MAX_TEAM_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Squad has already reached max capacity of {settings.MAX_TEAM_SIZE} members."
+            )
+
+        membership.role = "member"
+        membership.joined_at = utc_now()
+        db.commit()
+        db.refresh(membership)
+
+        ActivityService.record_activity(
+            db=db,
+            user_id=user_id_to_accept,
+            activity_type=ActivityType.TEAM_JOINED,
+            reference_id=team.id,
+            metadata={"team_id": str(team.id), "team_name": team.name, "accepted": True}
+        )
+
+        # Notify team owner that the invited user accepted
+        if team.owner_id != current_user.id:
+            try:
+                from app.services.notification_service import NotificationService
+                NotificationService.notify_team_invite_accepted(
+                    db=db,
+                    team_id=team.id,
+                    team_name=team.name,
+                    owner_id=team.owner_id,
+                    accepted_by_username=current_user.username,
+                )
+            except Exception:
+                pass
+
+        return cls._to_member_response(membership)
+
+    @classmethod
+    def decline_team_request(
+        cls,
+        db: Session,
+        current_user: User,
+        team_id: UUID,
+    ) -> dict:
+        """Invited user declines a pending squad request."""
+        team = db.query(Team).filter(Team.id == team_id).first()
+        if not team:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team not found.")
+
+        membership = (
+            db.query(TeamMember)
+            .filter(TeamMember.team_id == team.id, TeamMember.user_id == current_user.id, TeamMember.is_active == True)
+            .first()
+        )
+        if not membership:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pending squad request not found.")
+
+        db.delete(membership)
+        db.commit()
+
+        # Notify owner that the invite was declined
+        try:
+            from app.services.notification_service import NotificationService
+            NotificationService.notify_team_invite_declined(
+                db=db,
+                team_id=team.id,
+                team_name=team.name,
+                owner_id=team.owner_id,
+                declined_by_username=current_user.username,
+            )
+        except Exception:
+            pass
+
+        return {"message": f"Declined invitation to join {team.name}."}
 
     @classmethod
     def remove_team_member(
@@ -387,7 +822,7 @@ class TeamService:
         if current_user.id == team.owner_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Team owner cannot leave without transferring ownership first."
+                detail="Team owner cannot leave without transferring ownership first. Disband or delete the squad to delete it directly."
             )
 
         membership = (
@@ -543,5 +978,17 @@ class TeamService:
             )
 
         team.is_active = False
+        team_memberships = db.query(TeamMember).filter(TeamMember.team_id == team.id).all()
+        for m in team_memberships:
+            m.is_active = False
         db.commit()
-        return {"message": "Team deactivated successfully."}
+
+        ActivityService.record_activity(
+            db=db,
+            user_id=current_user.id,
+            activity_type=ActivityType.TEAM_LEFT,
+            reference_id=team.id,
+            metadata={"team_id": str(team.id), "team_name": team.name, "action": "deleted"}
+        )
+
+        return {"message": f"Squad '{team.name}' deleted successfully."}

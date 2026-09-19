@@ -69,6 +69,7 @@ class EventChallengeResponse(BaseModel):
     points: int
     display_order: int
     is_active: bool
+    is_solved: Optional[bool] = False
 
 
 class EventRegistrationRequest(BaseModel):

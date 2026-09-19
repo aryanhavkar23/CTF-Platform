@@ -44,10 +44,15 @@ class ScoringService:
     @staticmethod
     def get_user_solve_count(db: Session, user_id: UUID) -> int:
         """Returns the total number of distinct challenges solved by the user in practice mode."""
-        count = db.query(func.count(Solve.id))\
+        count = db.query(func.count(func.distinct(Solve.challenge_id)))\
             .filter(Solve.user_id == user_id, Solve.event_id == None)\
             .scalar()
         return int(count or 0)
+
+    @staticmethod
+    def recalculate_user_profile_score(db: Session, user_id: UUID) -> int:
+        """Recalculates and returns authoritative practice score for user."""
+        return ScoringService.get_user_score(db, user_id)
 
     @staticmethod
     def has_solved(

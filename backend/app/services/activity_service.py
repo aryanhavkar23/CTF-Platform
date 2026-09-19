@@ -115,6 +115,40 @@ class ActivityService:
                 d_str = act_date.isoformat()
                 counts_by_date[d_str] = counts_by_date.get(d_str, 0) + 1
 
+        # Also aggregate submissions
+        from app.models.submission import Submission
+        submissions = db.query(Submission.created_at)\
+            .filter(
+                Submission.user_id == user_id,
+                Submission.created_at >= start_dt,
+                Submission.created_at <= end_dt
+            ).all()
+        for (created_at,) in submissions:
+            if created_at is not None:
+                if created_at.tzinfo is None:
+                    act_date = created_at.date()
+                else:
+                    act_date = created_at.astimezone(timezone.utc).date()
+                d_str = act_date.isoformat()
+                counts_by_date[d_str] = counts_by_date.get(d_str, 0) + 1
+
+        # Also aggregate verified challenge solves
+        from app.models.solve import Solve
+        solves = db.query(Solve.created_at)\
+            .filter(
+                Solve.user_id == user_id,
+                Solve.created_at >= start_dt,
+                Solve.created_at <= end_dt
+            ).all()
+        for (created_at,) in solves:
+            if created_at is not None:
+                if created_at.tzinfo is None:
+                    act_date = created_at.date()
+                else:
+                    act_date = created_at.astimezone(timezone.utc).date()
+                d_str = act_date.isoformat()
+                counts_by_date[d_str] = counts_by_date.get(d_str, 0) + 1
+
         # Populate all days in the contiguous date range
         heatmap: List[Dict[str, Any]] = []
         cur_date = start_date

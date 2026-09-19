@@ -1,6 +1,15 @@
 """Pydantic request and response validation schemas."""
 from app.schemas.user import UserRegisterRequest, UserResponse
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    TokenResponse,
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ResetPasswordRequest,
+    GoogleAuthUrlResponse,
+    GoogleOAuthCallbackRequest,
+)
 from app.schemas.challenge import (
     CategoryResponse,
     ChallengeCreate,
@@ -9,6 +18,7 @@ from app.schemas.challenge import (
     ChallengeAdminResponse,
     ChallengeFileResponse,
 )
+
 from app.schemas.hint import (
     HintCreate,
     HintUpdate,
@@ -90,6 +100,43 @@ from app.schemas.notification import (
     UnreadCountResponse,
     MarkAllReadResponse,
 )
+from app.schemas.analytics import (
+    PeriodFilter,
+    PlatformOverviewResponse,
+    CollegeCountItem,
+    RoleCountItem,
+    UserAnalyticsResponse,
+    ActivityTrendPoint,
+    ActivityTrendResponse,
+    ChallengeAnalyticsItem,
+    DifficultyAnalyticsItem,
+    ChallengeInsightsResponse,
+    CategoryAnalyticsItem,
+    SubmissionDayPoint,
+    ChallengeFailureItem,
+    FrequentSubmitterItem,
+    SubmissionAnalyticsResponse,
+    EventAnalyticsItem,
+    EventPerformanceChallengeItem,
+    EventTopParticipant,
+    EventDetailAnalyticsResponse,
+    TeamAnalyticsResponse,
+    BadgeAnalyticsItem,
+    BadgeAnalyticsResponse,
+    MostDiscussedChallengeItem,
+    DiscussionAnalyticsResponse,
+    ScoreRangeItem,
+    TopUserItem,
+    LeaderboardAnalyticsResponse,
+    DashboardAnalyticsResponse,
+)
+from app.schemas.security_event import (
+    SecurityEventResponse,
+    SecurityEventListResponse,
+    SecurityEventReviewRequest,
+    SecurityEventReviewResponse,
+    UserSecuritySummaryResponse,
+)
 
 __all__ = [
     "UserRegisterRequest",
@@ -163,6 +210,54 @@ __all__ = [
     "NotificationListResponse",
     "UnreadCountResponse",
     "MarkAllReadResponse",
+    "PeriodFilter",
+    "PlatformOverviewResponse",
+    "CollegeCountItem",
+    "RoleCountItem",
+    "UserAnalyticsResponse",
+    "ActivityTrendPoint",
+    "ActivityTrendResponse",
+    "ChallengeAnalyticsItem",
+    "DifficultyAnalyticsItem",
+    "ChallengeInsightsResponse",
+    "CategoryAnalyticsItem",
+    "SubmissionDayPoint",
+    "ChallengeFailureItem",
+    "FrequentSubmitterItem",
+    "SubmissionAnalyticsResponse",
+    "EventAnalyticsItem",
+    "EventPerformanceChallengeItem",
+    "EventTopParticipant",
+    "EventDetailAnalyticsResponse",
+    "TeamAnalyticsResponse",
+    "BadgeAnalyticsItem",
+    "BadgeAnalyticsResponse",
+    "MostDiscussedChallengeItem",
+    "DiscussionAnalyticsResponse",
+    "ScoreRangeItem",
+    "TopUserItem",
+    "LeaderboardAnalyticsResponse",
+    "DashboardAnalyticsResponse",
+    "SecurityEventResponse",
+    "SecurityEventListResponse",
+    "SecurityEventReviewRequest",
+    "SecurityEventReviewResponse",
+    "UserSecuritySummaryResponse",
+    "GitHubAuthUrlResponse",
+    "GitHubCallbackRequest",
+    "GitHubIntegrationStatusResponse",
+    "GitHubRepoItem",
+    "GitHubRepoSelectRequest",
+    "GitHubSyncResponse",
 ]
+
+from app.schemas.github import (
+    GitHubAuthUrlResponse,
+    GitHubCallbackRequest,
+    GitHubIntegrationStatusResponse,
+    GitHubRepoItem,
+    GitHubRepoSelectRequest,
+    GitHubSyncResponse,
+)
 
 

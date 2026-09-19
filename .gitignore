@@ -25,7 +25,8 @@ wheels/
 
 # Environment variables
 .env
-.env.local
+.env.*
+!.env.example
 
 # Database
 *.sqlite
@@ -48,3 +49,7 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+# Temporary & Scratch
+scratch_test/
+node_modules/
+*.log

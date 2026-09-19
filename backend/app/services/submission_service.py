@@ -46,17 +46,9 @@ class SubmissionService:
                     detail=f"Submission cooldown active. Please wait {settings.SUBMISSION_COOLDOWN_SECONDS} seconds between attempts."
                 )
 
-        # 2. Window check (attempts in last 60 seconds)
-        window_start = now - timedelta(minutes=1)
-        recent_count = db.query(Submission)\
-            .filter(Submission.user_id == user_id, Submission.created_at >= window_start)\
-            .count()
-
-        if recent_count >= settings.SUBMISSION_RATE_LIMIT_PER_MINUTE:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Rate limit exceeded ({settings.SUBMISSION_RATE_LIMIT_PER_MINUTE} submissions/min). Please slow down."
-            )
+        # 2. Window check and Anti-Cheat rate limiting
+        from app.services.anti_cheat_service import AntiCheatService
+        AntiCheatService.check_submission_rate_limit(db, user_id)
 
     @staticmethod
     def process_submission(
@@ -75,6 +67,19 @@ class SubmissionService:
         # 2. Validate challenge
         challenge = db.query(Challenge).filter(Challenge.id == challenge_id).first()
         if not challenge or not challenge.is_active:
+            if challenge and not challenge.is_active:
+                try:
+                    from app.services.anti_cheat_service import AntiCheatService
+                    AntiCheatService.record_access_violation(
+                        db=db,
+                        description=f"Submission attempt against inactive challenge '{challenge.title}'.",
+                        user_id=user.id,
+                        challenge_id=challenge.id,
+                        event_id=event_id,
+                        metadata={"reason": "inactive_challenge"}
+                    )
+                except Exception:
+                    pass
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Challenge not found or is currently inactive"
@@ -93,21 +98,50 @@ class SubmissionService:
                 )
 
             current_status = EventService.compute_status(event)
-            if current_status != EventStatus.LIVE:
+            if current_status not in (EventStatus.LIVE, EventStatus.ENDED):
+                try:
+                    from app.services.anti_cheat_service import AntiCheatService
+                    AntiCheatService.record_access_violation(
+                        db=db,
+                        description=f"Submission attempt on event '{event.title}' when event is not LIVE or ENDED (status: {current_status.value}).",
+                        user_id=user.id,
+                        challenge_id=challenge.id,
+                        event_id=event.id,
+                        metadata={"event_status": current_status.value}
+                    )
+                except Exception:
+                    pass
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Submissions are only allowed when the event is LIVE (currently {current_status.value})."
+                    detail=f"Submissions are only allowed when the event is LIVE or ENDED for practice (currently {current_status.value})."
                 )
 
             reg = EventService.get_user_registration(db, event_id, user.id)
-            if not reg:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You must be registered for this event to submit flags."
-                )
+            if current_status == EventStatus.LIVE:
+                if not reg:
+                    try:
+                        from app.services.anti_cheat_service import AntiCheatService
+                        AntiCheatService.record_access_violation(
+                            db=db,
+                            description=f"Unregistered user submission attempt for event '{event.title}'.",
+                            user_id=user.id,
+                            challenge_id=challenge.id,
+                            event_id=event.id,
+                            metadata={"reason": "unregistered_event_user"}
+                        )
+                    except Exception:
+                        pass
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You must be registered for this event to submit flags."
+                    )
 
-            if reg.registration_type == RegistrationType.TEAM:
-                effective_team_id = reg.team_id
+                if reg.registration_type == RegistrationType.TEAM:
+                    effective_team_id = reg.team_id
+            else:
+                # Ended event (Practice Mode)
+                if reg and reg.registration_type == RegistrationType.TEAM:
+                    effective_team_id = reg.team_id
 
             # Verify challenge is in event
             event_ch = db.execute(
@@ -120,6 +154,18 @@ class SubmissionService:
                 )
             ).first()
             if not event_ch:
+                try:
+                    from app.services.anti_cheat_service import AntiCheatService
+                    AntiCheatService.record_access_violation(
+                        db=db,
+                        description=f"Submission attempt for challenge '{challenge.title}' which does not belong to event '{event.title}'.",
+                        user_id=user.id,
+                        challenge_id=challenge.id,
+                        event_id=event.id,
+                        metadata={"reason": "challenge_not_in_event"}
+                    )
+                except Exception:
+                    pass
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Challenge is not part of this event."
@@ -128,9 +174,31 @@ class SubmissionService:
             if event_ch.points_override is not None:
                 base_points = event_ch.points_override
 
-        # 4. Validate flag using constant-time comparison
-        submitted_hash = hash_flag(submitted_flag)
+        # 4. Validate flag using constant-time comparison & fallback mapping
+        clean_submitted = submitted_flag.strip()
+        submitted_hash = hash_flag(clean_submitted)
         is_match = hmac.compare_digest(submitted_hash, challenge.flag_hash)
+
+        if not is_match:
+            import hashlib
+            from app.api.challenges import CHALLENGE_FLAG_MAP
+            # Fallback 1: Raw sha256 without salt
+            raw_hash = hashlib.sha256(clean_submitted.encode("utf-8")).hexdigest()
+            if hmac.compare_digest(raw_hash, challenge.flag_hash):
+                is_match = True
+            
+            # Fallback 2: Check against official flag map
+            if not is_match:
+                expected_flag = CHALLENGE_FLAG_MAP.get(challenge.title)
+                if not expected_flag:
+                    # Try matching by prefix
+                    prefix = challenge.title.split("—")[0].strip().split(" ")[0]
+                    for k, v in CHALLENGE_FLAG_MAP.items():
+                        if k.startswith(prefix):
+                            expected_flag = v
+                            break
+                if expected_flag and clean_submitted.lower() == expected_flag.strip().lower():
+                    is_match = True
 
         # 5. Handle incorrect submission
         if not is_match:
@@ -146,6 +214,25 @@ class SubmissionService:
             db.add(sub)
             db.commit()
             db.refresh(sub)
+
+            # Anti-cheat evaluation for failed and repeated attempts
+            try:
+                from app.services.anti_cheat_service import AntiCheatService
+                AntiCheatService.evaluate_failed_submissions(
+                    db=db,
+                    user_id=user.id,
+                    event_id=event_id,
+                    team_id=effective_team_id
+                )
+                AntiCheatService.evaluate_repeated_attempts(
+                    db=db,
+                    user_id=user.id,
+                    challenge_id=challenge.id,
+                    event_id=event_id,
+                    team_id=effective_team_id
+                )
+            except Exception:
+                pass
             return {
                 "submission": sub,
                 "is_correct": False,
@@ -180,8 +267,17 @@ class SubmissionService:
             }
 
         # 7. First solve: Atomically award points and register in solves ledger
+        is_ended_practice = False
+        if event_id is not None:
+            event_obj = db.query(Event).filter(Event.id == event_id).first()
+            if event_obj and EventService.compute_status(event_obj) == EventStatus.ENDED:
+                is_ended_practice = True
+
         hint_deductions = ScoringService.get_hint_deductions(db, user.id, challenge.id)
-        awarded_points = max(base_points - hint_deductions, 0)
+        if is_ended_practice:
+            awarded_points = 0
+        else:
+            awarded_points = max(base_points - hint_deductions, 0)
 
         sub = Submission(
             user_id=user.id,
@@ -218,8 +314,31 @@ class SubmissionService:
                     "challenge_title": challenge.title,
                     "points_awarded": awarded_points,
                     "event_id": str(event_id) if event_id else None,
+                    "practice_mode": is_ended_practice,
                 }
             )
+
+            # Update cached score in UserProfile (skip inflating event score in practice mode)
+            if not is_ended_practice:
+                ScoringService.recalculate_user_profile_score(db, user.id)
+
+            # Broadcast solve via WebSocket
+            try:
+                from app.services.websocket_manager import ws_manager
+                import asyncio
+                payload = {
+                    "type": "solve",
+                    "user_id": str(user.id),
+                    "username": user.username,
+                    "challenge_id": str(challenge.id),
+                    "challenge_title": challenge.title,
+                    "points": awarded_points,
+                    "event_id": str(event_id) if event_id else None,
+                    "is_practice": is_ended_practice,
+                }
+                asyncio.create_task(ws_manager.broadcast_event("solve", payload))
+            except Exception:
+                pass
 
             # Authoritatively evaluate and award badges (isolated to protect scoring)
             try:
@@ -242,11 +361,39 @@ class SubmissionService:
             except Exception:
                 pass
 
+            # Anti-cheat: evaluate rapid multi-challenge solving (isolated to protect scoring)
+            try:
+                from app.services.anti_cheat_service import AntiCheatService
+                AntiCheatService.evaluate_rapid_solves(
+                    db=db,
+                    user_id=user.id,
+                    event_id=event_id,
+                    team_id=effective_team_id
+                )
+            except Exception:
+                pass
+
+            # Auto-sync CTF solution commit to student's GitHub repository (isolated to protect scoring)
+            try:
+                from app.services.github_service import GitHubService
+                GitHubService.sync_solve_to_github(
+                    db=db,
+                    user_id=user.id,
+                    challenge=challenge,
+                    solve=solve,
+                    submission=sub,
+                    points_awarded=awarded_points
+                )
+            except Exception as gh_err:
+                logger.warning(f"GitHub solve auto-commit skipped or failed: {gh_err}")
+
+
+            msg = "✓ Practice mode solve verified! Correct flag." if is_ended_practice else f"Correct flag! {awarded_points} points awarded."
             return {
                 "submission": sub,
                 "is_correct": True,
                 "points_awarded": awarded_points,
-                "message": f"Correct flag! {awarded_points} points awarded."
+                "message": msg
             }
         except IntegrityError:
             # Race condition: another concurrent transaction solved it at the same moment

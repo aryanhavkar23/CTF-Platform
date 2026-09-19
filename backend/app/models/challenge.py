@@ -18,6 +18,11 @@ class ChallengeType(str, enum.Enum):
     LIVE = "live"
 
 
+class InstanceMode(str, enum.Enum):
+    SHARED = "shared"
+    ISOLATED = "isolated"
+
+
 class WriteupVisibility(str, enum.Enum):
     HIDDEN = "hidden"
     AFTER_SOLVE = "after_solve"
@@ -37,17 +42,20 @@ class Challenge(TimeStampedModel):
         nullable=False,
         index=True
     )
-    points = Column(Integer, nullable=False)
-    flag_hash = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False, index=True)
     challenge_type = Column(
         SQLEnum(ChallengeType, native_enum=False, length=20),
         default=ChallengeType.STATIC,
-        nullable=False
+        nullable=True,
     )
-    is_live_instance = Column(Boolean, default=False, nullable=False)
-    docker_image = Column(String(255), nullable=True)
+    points = Column(Integer, nullable=False)
+    flag_hash = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+
+    # External URL for pre-hosted live challenges (replaces Docker sandbox)
+    external_url = Column(String(512), nullable=True)
+
     file_urls = Column(Text, nullable=True)
+    is_dynamic_flag = Column(Boolean, default=False, nullable=False, server_default='false')
 
     # Constraints
     __table_args__ = (

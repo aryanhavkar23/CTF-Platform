@@ -55,6 +55,9 @@ class PublicProfileResponse(BaseModel):
     current_team: Optional[str] = None
     badges_count: int = 0
     recent_badges: List[Dict[str, Any]] = Field(default_factory=list)
+    followers_count: int = 0
+    following_count: int = 0
+    is_following: bool = False
 
 
 class PrivateProfileResponse(PublicProfileResponse):
@@ -103,3 +106,4 @@ class CategoryStatsResponse(BaseModel):
     category: str
     solved_count: int
     points_earned: int
+    total_count: Optional[int] = 0

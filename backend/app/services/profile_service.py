@@ -56,6 +56,10 @@ class ProfileService:
         from app.services.badge_service import BadgeService
         badges_count, recent_badges = BadgeService.get_user_badge_summary(db, user.id)
 
+        # Compute follow statistics
+        from app.services.follow_service import FollowService
+        followers_count, following_count = FollowService.get_follow_counts(db, user.id)
+
         profile_data = {
             "id": user.id,
             "username": user.username,
@@ -74,6 +78,9 @@ class ProfileService:
             "current_team": current_team_name,
             "badges_count": badges_count,
             "recent_badges": recent_badges,
+            "followers_count": followers_count,
+            "following_count": following_count,
+            "is_following": False,
         }
 
         if is_self:
@@ -127,9 +134,16 @@ class ProfileService:
         # Query all active categories to ensure complete distribution
         all_categories = db.query(Category).order_by(Category.name.asc()).all()
 
+        total_counts = dict(
+            db.query(Challenge.category_id, func.count(Challenge.id))
+            .filter(Challenge.is_active == True)
+            .group_by(Challenge.category_id)
+            .all()
+        )
+
         solve_aggs = db.query(
             Challenge.category_id,
-            func.count(Solve.id).label("solved_count"),
+            func.count(func.distinct(Solve.challenge_id)).label("solved_count"),
             func.sum(Solve.points_awarded).label("points_earned"),
         ).join(Solve, Solve.challenge_id == Challenge.id)\
          .filter(Solve.user_id == user_id)\
@@ -148,6 +162,7 @@ class ProfileService:
                 "category": cat.name,
                 "solved_count": agg["solved_count"],
                 "points_earned": agg["points_earned"],
+                "total_count": total_counts.get(cat.id, 0),
             })
 
         return category_stats
